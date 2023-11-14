@@ -1,39 +1,37 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/joho/godotenv"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 )
 
 var endpoint string
 
 func oauth() string {
-	var token, host string
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println(".envファイルが見つからないか、読み込めません")
+		return ""
+	}
 
-	//認証
-	fmt.Println("トークンを設定してください。APIで全権限付与した物を扱うので扱いには十分お気を付けください。")
-	token = readInput("Token: ")
+	token := os.Getenv("TOKEN")
+	host := os.Getenv("HOST")
 
-	fmt.Println("サーバーのホストを設定してください。https://の記載は不要でドメインのみ記載してね。")
-	host = readInput("Host: ")
+	if token == "" || host == "" {
+		fmt.Println("トークンとホストを正しく設定してください。")
+		return ""
+	}
 
 	endpoint = "https://" + host + "/api/"
 
+	fmt.Println("Endpoint:", endpoint)
 	return token
-}
-
-func readInput(prompt string) string {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print(prompt)
-	text, _ := reader.ReadString('\n')
-	return strings.TrimSpace(text)
 }
 
 func post(api string, args map[string]interface{}) ([]byte, error) {
@@ -189,8 +187,7 @@ func main() {
 		}
 	}
 
-	fmt.Println("Press ENTER to exit")
-	fmt.Scanln()
+	os.Exit(0)
 }
 
 func orderByCreatedAt(notes []Note) []Note {
