@@ -1,20 +1,13 @@
-# MisskeyNoteDeleteTool
-Misskeyで自分が投稿した文章を消すツール。
-Goで動作します。
+## Misskey Note Delete Tool
 
-## 使用方法
+A tool to erase posts you posted on Misskey. Works with Golang😊
 
-```
-go build main.go
-```
+## Usage
 
-```
-./main
-```
+`go build main.go`
 
-指示された内容を入力すると自動で実行されます
+`./main`
 
-
-## 弄りんちゅ向け
-デフォルトのままでも基本はサーバーに負荷が掛かりません。
-（サーバー側で制限が掛かるのでこちらが調整できるのは再試行するまでのインターバルのみ）
+☑️Please refer to .env.example to create an .env file that includes the token and host name, then run it.
+## For developers
+I created this tool as part of learning Golang. If there are any areas that can be improved or need corrections, I'd appreciate it if you could give me some advice or PR.💥
