@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/joho/godotenv"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 var endpoint string
@@ -203,6 +204,7 @@ func GetUsersNotes(userId, untilId, token string) ([]Note, error) {
 			"limit":            100,
 			"i":                token,
 			"withChannelNotes": true,
+			"withReplies":      true,
 			"localOnly":        true,
 			"isSensitive":      true,
 			"isHidden":         true,
@@ -214,6 +216,7 @@ func GetUsersNotes(userId, untilId, token string) ([]Note, error) {
 			"limit":            100,
 			"i":                token,
 			"withChannelNotes": true,
+			"withReplies":      true,
 			"localOnly":        true,
 			"isSensitive":      true,
 			"isHidden":         true,
