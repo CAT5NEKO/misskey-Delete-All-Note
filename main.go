@@ -79,8 +79,6 @@ type Error struct {
 	Kind    string `json:"kind"`
 }
 
-//ピンどめされてたら外してから抹消する処理
-
 func UnpinNote(noteId, token string) error {
 	args := map[string]interface{}{
 		"noteId": noteId,
@@ -90,7 +88,6 @@ func UnpinNote(noteId, token string) error {
 }
 
 func main() {
-	//ユーザー情報の照会
 	token := oauth()
 	me, err := FetchUser("i", map[string]interface{}{"i": token})
 	if err != nil {
@@ -103,7 +100,6 @@ func main() {
 	fmt.Printf(" %d Notes\n", me.NotesCount)
 	fmt.Printf(" id: %s\n", me.Id)
 
-	//ピン留めの解除
 	pinnedCount := 0
 
 	for _, note := range me.PinnedNotes {
@@ -170,8 +166,7 @@ func main() {
 	}
 
 	fmt.Printf("Fetched your %d notes!\n", len(notes))
-
-	//取得したnotesをcreatedAtの昇順にソートする
+	
 	notes = orderByCreatedAt(notes)
 
 	for i := 0; i < len(notes); i++ {
