@@ -17,7 +17,7 @@ var endpoint string
 func oauth() string {
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Println(".envファイルが見つからないか、読み込めません")
+		fmt.Println(".env file is missing or cannot be loaded")
 		return ""
 	}
 
@@ -25,7 +25,7 @@ func oauth() string {
 	host := os.Getenv("HOST")
 
 	if token == "" || host == "" {
-		fmt.Println("トークンとホストを正しく設定してください。")
+		fmt.Println("Please set the token and host correctly.")
 		return ""
 	}
 
@@ -91,11 +91,11 @@ func main() {
 	token := oauth()
 	me, err := FetchUser("i", map[string]interface{}{"i": token})
 	if err != nil {
-		fmt.Println("照会中にエラーが発生しました:", err)
+		fmt.Println("An error occurred while querying:", err)
 		return
 	}
 
-	fmt.Println("ノート数を補足:")
+	fmt.Println("Reading posted content:")
 	fmt.Printf(" %s @%s\n", me.Name, me.Username)
 	fmt.Printf(" %d Notes\n", me.NotesCount)
 	fmt.Printf(" id: %s\n", me.Id)
@@ -166,7 +166,7 @@ func main() {
 	}
 
 	fmt.Printf("Fetched your %d notes!\n", len(notes))
-	
+
 	notes = orderByCreatedAt(notes)
 
 	for i := 0; i < len(notes); i++ {
