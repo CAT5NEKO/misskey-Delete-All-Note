@@ -10,8 +10,8 @@ read post_time
 echo "TOKEN=$token" > .env
 echo "HOST=$host" >> .env
 
-post_hour=$(echo $post_time | cut -d: -f1)
-post_minute=$(echo $post_time | cut -d: -f2)
+post_hour=$(echo "$post_time" | cut -d: -f1)
+post_minute=$(echo "$post_time" | cut -d: -f2)
 
 current_dir=$(pwd)
 
