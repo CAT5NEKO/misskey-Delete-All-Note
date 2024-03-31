@@ -16,6 +16,6 @@ post_minute=$(echo $post_time | cut -d: -f2)
 current_dir=$(pwd)
 
 echo "以下のコマンドをcrontabに追加してください:"
-echo "$post_minute $post_hour * * * cd $current_dir && ./misskeyJihou"
+echo "$post_minute $post_hour * * * cd $current_dir && ./misskeyNotedel"
 
 echo "設定が完了しました。"
