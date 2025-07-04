@@ -1,19 +1,28 @@
 ## Misskey Note Delete Tool
 
-A tool to erase posts you posted on Misskey.
-The main branch is for local PCs where you can directly enter the API and URL, and the env
-branch is able to on the server and can be used for cron execution.🚀
+A simple CLI tool to bulk-delete your posts on Misskey.  
+It designed for server environments and can be used with scheduled tasks like cron. 🚀
 
-## Usage
+---
 
-create`.env` file and write the following `env.example`.
+## 🚀 Getting Started
 
-`go build `
+1. Create a `.env` file based on `.env.example`, and fill in your Misskey API token and host.
+2. Build the tool.
 
-`./misskeyNotedel`
+```bash
+   go build
+```
+3. Run it
 
-☑️Please refer to .env.example to create an .env file that includes the token and host name, then run it.
+```bash
+./misskeyNotedel
+```
 
-## For developers
+🧫 Make sure your .env includes a valid API token and Misskey host (e.g., misskey.hoge).
 
-I created this tool as part of learning Golang. If there are any areas that can be improved or need corrections, I'd appreciate it if you could give me some advice or PR.💥
+🐈 For Developers
+
+This tool was originally built as a way for me to get more hands-on experience with Go.  
+If you spot anything that could be improved, feel free to open an issue or send a PR.  
+Suggestions and contributions are always welcome! 💥
