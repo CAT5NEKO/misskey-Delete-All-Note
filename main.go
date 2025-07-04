@@ -10,6 +10,7 @@ func main() {
 	client, err := NewClient()
 	if err != nil {
 		log.Fatalf("Failed to initialize client: %v", err)
+
 	}
 
 	user, err := client.FetchUser()
@@ -42,6 +43,7 @@ func main() {
 		allNotes = append(allNotes, batch...)
 		fmt.Printf("Fetched %d notes...\n", len(allNotes))
 	}
+
 
 	for i, note := range allNotes {
 		if err := client.DeleteNote(note.Id); err != nil {
