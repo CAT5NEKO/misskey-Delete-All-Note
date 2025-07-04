@@ -48,11 +48,7 @@ func (c *Client) Post(api string, args map[string]interface{}, result interface{
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		fmt.Printf("Warning: HTTP %d returned from %s\n", resp.StatusCode, api)
-		if result != nil {
-			_ = json.NewDecoder(resp.Body).Decode(result)
-		}
-		return nil
+		return fmt.Errorf("HTTP error: %d", resp.StatusCode)
 	}
 
 	if result != nil {
