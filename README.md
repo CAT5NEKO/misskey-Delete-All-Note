@@ -3,6 +3,13 @@
 A simple CLI tool to bulk-delete your posts on Misskey.  
 It designed for server environments and can be used with scheduled tasks like cron. 🚀
 
+## Caution
+
+This tool is intended for local-only posts.  
+Since Fediverse platforms propagate delete requests across servers, excessive deletions may cause unnecessary load.  
+When using this tool on federated posts, set long intervals between requests and design your 
+code to minimise server load, even where no rate limits apply.
+
 ---
 
 ## 🚀 Getting Started
@@ -26,3 +33,4 @@ It designed for server environments and can be used with scheduled tasks like cr
 This tool was originally built as a way for me to get more hands-on experience with Go.  
 If you spot anything that could be improved, feel free to open an issue or send a PR.  
 Suggestions and contributions are always welcome! 💥
+

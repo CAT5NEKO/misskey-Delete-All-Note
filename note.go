@@ -10,14 +10,14 @@ func (c *Client) DeleteNote(noteId string) error {
 
 func (c *Client) FetchNotes(userId, untilId string) ([]Note, error) {
 	args := map[string]interface{}{
-		"userId":           userId,
-		"limit":            100,
-		"withChannelNotes": true,
-		"withReplies":      true,
-		"localOnly":        true,
-		"isSensitive":      true,
-		"isHidden":         true,
-		"allowPartial":     true,
+		"userId": userId,
+		"limit":  100,
+		//"withChannelNotes": true,
+		//"withReplies":      true,
+		//"localOnly":        true,
+		//"isSensitive":      true,
+		//"isHidden":         true,
+		//"allowPartial":     true,
 	}
 	if untilId != "" {
 		args["untilId"] = untilId
