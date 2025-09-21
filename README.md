@@ -5,7 +5,7 @@ It designed for server environments and can be used with scheduled tasks like cr
 
 ## Caution
 
-This environment is intended for local-only posts.  
+This tool is intended for local-only posts.  
 Since Fediverse platforms propagate delete requests across servers, excessive deletions may cause unnecessary load.  
 When using this tool on federated posts, set long intervals between requests and design your 
 code to minimise server load, even where no rate limits apply.
