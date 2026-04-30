@@ -63,7 +63,7 @@ func (i *deleteNotesInteractor) Execute() error {
 	for index, note := range targets {
 		currentNumber := index + 1
 		if err := i.repository.DeleteNote(note.ID); err != nil {
-			i.logger.Error(fmt.Sprintf("[%d/%d] Error deleting note %s", currentNumber, targetCount, note.ID), err)
+			i.logger.Error(fmt.Sprintf("[%d/%d] Error deleting note %s (kind=%s)", currentNumber, targetCount, note.ID, note.KindLabel()), err)
 			time.Sleep(15 * time.Minute)
 			continue
 		}

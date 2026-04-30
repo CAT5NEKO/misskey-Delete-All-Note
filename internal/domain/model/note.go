@@ -9,8 +9,32 @@ type Note struct {
 	CreatedAt   time.Time      `json:"createdAt"`
 	Text        *string        `json:"text"`
 	CW          *string        `json:"cw"`
+	RenoteID    *NoteID        `json:"renoteId"`
+	Renote      *Note          `json:"renote"`
 	Reactions   map[string]int `json:"reactions"`
 	RenoteCount int            `json:"renoteCount"`
+}
+
+func (n *Note) hasOwnContent() bool {
+	return (n.CW != nil && *n.CW != "") || (n.Text != nil && *n.Text != "")
+}
+
+func (n *Note) IsRenote() bool {
+	return n.RenoteID != nil || n.Renote != nil
+}
+
+func (n *Note) IsQuoteRenote() bool {
+	return n.IsRenote() && n.hasOwnContent()
+}
+
+func (n *Note) KindLabel() string {
+	if n.IsQuoteRenote() {
+		return "quote-renote"
+	}
+	if n.IsRenote() {
+		return "renote"
+	}
+	return "note"
 }
 
 func (n *Note) ShouldKeep(config *AppConfig) bool {

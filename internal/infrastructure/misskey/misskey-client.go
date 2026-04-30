@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"misskeyNotedel/internal/domain/model"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -49,7 +51,12 @@ func (c *MisskeyClient) post(api string, args map[string]interface{}, result int
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HTTP %d returned from %s", resp.StatusCode, api)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyText := strings.TrimSpace(string(bodyBytes))
+		if bodyText == "" {
+			return fmt.Errorf("HTTP %d returned from %s", resp.StatusCode, api)
+		}
+		return fmt.Errorf("HTTP %d returned from %s: %s", resp.StatusCode, api, bodyText)
 	}
 
 	if result != nil {

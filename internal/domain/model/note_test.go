@@ -70,6 +70,25 @@ func TestNote_ShouldKeep(t *testing.T) {
 			t.Errorf("GetSummary failed truncation: got %s, want %s", n3.GetSummary(), expected)
 		}
 	})
+
+	t.Run("KindLabel", func(t *testing.T) {
+		renoteID := NoteID("r1")
+
+		n1 := Note{ID: "n1"}
+		if got := n1.KindLabel(); got != "note" {
+			t.Errorf("KindLabel note failed: got %s", got)
+		}
+
+		n2 := Note{ID: "n2", RenoteID: &renoteID}
+		if got := n2.KindLabel(); got != "renote" {
+			t.Errorf("KindLabel renote failed: got %s", got)
+		}
+
+		n3 := Note{ID: "n3", RenoteID: &renoteID, Text: strPtr("comment")}
+		if got := n3.KindLabel(); got != "quote-renote" {
+			t.Errorf("KindLabel quote-renote failed: got %s", got)
+		}
+	})
 }
 
 func TestAppConfig_IsSafeInterval(t *testing.T) {
