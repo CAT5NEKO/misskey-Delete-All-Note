@@ -1,36 +1,28 @@
 ## Misskey Note Delete Tool
 
-A simple CLI tool to bulk-delete your posts on Misskey.  
-It designed for server environments and can be used with scheduled tasks like cron. 🚀
+Misskeyの投稿をCLI上で削除するためのツールです。
+Cron等で定期的に実行することで、決まった時間に自動的に削除できます。
 
-## Caution
+## 注意
 
-This tool is intended for local-only posts.  
-Since Fediverse platforms propagate delete requests across servers, excessive deletions may cause unnecessary load.  
-When using this tool on federated posts, set long intervals between requests and design your 
-code to minimise server load, even where no rate limits apply.
+本ツールはローカル限定投稿での利用を推奨します。  
+Misskeyは分散型SNSであるため、連合を含む投稿をした場合は他のサーバーにも削除リクエストが飛びます。  
+削除間隔を過剰に短くすると、サーバーに過剰な負荷をかける原因となる可能性がありますので、  
+連合状態で使用する際は必ず間隔を長めに設定してください。（少なくともデフォルト値の30秒を使用されることを推奨します。）  
 
 ---
 
-## 🚀 Getting Started
+## 使用方法
 
-1. Create a `.env` file based on `.env.example`, and fill in your Misskey API token and host.
-2. Build the tool.
+1. .envファイルを作成する（.env.exampleを参考にしてください）
+2. ビルドする
 
 ```bash
    go build
 ```
-3. Run it
+3. 実行
 
 ```bash
 ./misskeyNotedel
 ```
-
-🧫 Make sure your .env includes a valid API token and Misskey host (e.g., misskey.hoge).
-
-🐈 For Developers
-
-This tool was originally built as a way for me to get more hands-on experience with Go.  
-If you spot anything that could be improved, feel free to open an issue or send a PR.  
-Suggestions and contributions are always welcome! 💥
 

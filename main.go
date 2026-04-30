@@ -3,59 +3,72 @@ package main
 import (
 	"fmt"
 	"log"
-	"time"
+	"misskeyNotedel/internal/application/usecase"
+	"misskeyNotedel/internal/domain/model"
+	"misskeyNotedel/internal/infrastructure/misskey"
+	"os"
+	"strconv"
+
+	"github.com/joho/godotenv"
 )
 
+type consoleLogger struct{}
+
+func (l *consoleLogger) Info(message string) {
+	fmt.Printf("[INFO] %s\n", message)
+}
+
+func (l *consoleLogger) Warn(message string) {
+	fmt.Printf("[WARN] %s\n", message)
+}
+
+func (l *consoleLogger) Error(message string, err error) {
+	fmt.Printf("[ERROR] %s: %v\n", message, err)
+}
+
 func main() {
-	client, err := NewClient()
+	_ = godotenv.Load()
+
+	deleteInterval := getEnvInt("DELETE_INTERVAL", 30)
+	keepReactions := getEnvBool("KEEP_WITH_REACTIONS", false)
+	keepRenotes := getEnvBool("KEEP_WITH_RENOTES", false)
+
+	client, err := misskey.NewMisskeyClient()
 	if err != nil {
 		log.Fatalf("Failed to initialize client: %v", err)
-
 	}
 
-	user, err := client.FetchUser()
+	config := model.NewAppConfig(deleteInterval, keepReactions, keepRenotes)
+	logger := &consoleLogger{}
+	deleteUseCase := usecase.NewDeleteNotesUseCase(client, config, logger)
+
+	if err := deleteUseCase.Execute(); err != nil {
+		log.Fatalf("Execution failed: %v", err)
+	}
+
+	fmt.Println("Process completed.")
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	valueStr := os.Getenv(key)
+	if valueStr == "" {
+		return defaultValue
+	}
+	value, err := strconv.Atoi(valueStr)
 	if err != nil {
-		log.Fatalf("Failed to fetch user info: %v", err)
+		return defaultValue
 	}
+	return value
+}
 
-	fmt.Printf("User: %s @%s (%d Notes)\n", user.Name, user.Username, user.NotesCount)
-
-	for _, note := range user.PinnedNotes {
-		if err := client.UnpinNote(note.Id); err != nil {
-			fmt.Printf("Failed to unpin note %s: %v\n", note.Id, err)
-		} else {
-			fmt.Printf("Unpinned note: %s\n", note.Id)
-		}
+func getEnvBool(key string, defaultValue bool) bool {
+	valueStr := os.Getenv(key)
+	if valueStr == "" {
+		return defaultValue
 	}
-
-	var allNotes []Note
-	untilId := ""
-	for {
-		batch, err := client.FetchNotes(user.Id, untilId)
-		if err != nil {
-			log.Printf("Error fetching notes: %v", err)
-			break
-		}
-		if len(batch) == 0 {
-			break
-		}
-		untilId = batch[len(batch)-1].Id
-		allNotes = append(allNotes, batch...)
-		fmt.Printf("Fetched %d notes...\n", len(allNotes))
+	value, err := strconv.ParseBool(valueStr)
+	if err != nil {
+		return defaultValue
 	}
-
-
-	for i, note := range allNotes {
-		if err := client.DeleteNote(note.Id); err != nil {
-			fmt.Printf("Error deleting note %d/%d (%s): %v\n", i+1, len(allNotes), note.Id, err)
-			fmt.Println("Retrying in 15 minutes...")
-			time.Sleep(15 * time.Minute)
-			i--
-		} else {
-			fmt.Printf("Deleted note %d/%d\n", i+1, len(allNotes))
-			time.Sleep(1 * time.Second)
-		}
-	}
-
-	fmt.Println("All notes deleted.")
+	return value
 }
