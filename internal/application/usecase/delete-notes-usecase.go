@@ -5,6 +5,7 @@ import (
 	"misskeyNotedel/internal/domain/model"
 	"misskeyNotedel/internal/domain/repository"
 	"misskeyNotedel/internal/shared/logger"
+	"strings"
 	"time"
 )
 
@@ -63,6 +64,12 @@ func (i *deleteNotesInteractor) Execute() error {
 	for index, note := range targets {
 		currentNumber := index + 1
 		if err := i.repository.DeleteNote(note.ID); err != nil {
+			if note.IsRenote() && isNonPublicRenoteDeleteError(err) {
+				i.logger.Warn(fmt.Sprintf("[%d/%d] Skipped renote %s due to Misskey internal error for non-public origin", currentNumber, targetCount, note.ID))
+				time.Sleep(time.Duration(i.config.DeleteInterval) * time.Second)
+				continue
+			}
+
 			i.logger.Error(fmt.Sprintf("[%d/%d] Error deleting note %s (kind=%s)", currentNumber, targetCount, note.ID, note.KindLabel()), err)
 			time.Sleep(15 * time.Minute)
 			continue
@@ -74,6 +81,13 @@ func (i *deleteNotesInteractor) Execute() error {
 
 	i.logger.Info(fmt.Sprintf("Process completed. Total deleted: %d", targetCount))
 	return nil
+}
+
+func isNonPublicRenoteDeleteError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "renderAnnounce: cannot render non-public note")
 }
 
 func (i *deleteNotesInteractor) scanDeletionTargets(userID model.UserID) ([]model.Note, error) {

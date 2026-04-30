@@ -121,4 +121,41 @@ func TestDeleteNotesUseCase_Execute(t *testing.T) {
 			t.Error("Expected error, got nil")
 		}
 	})
+
+	t.Run("SkipKnownNonPublicRenoteDeleteError", func(t *testing.T) {
+		renoteID := model.NoteID("src1")
+		deleteCount := 0
+		repo := &mockRepository{
+			fetchUserFunc: func() (*model.User, error) {
+				return &model.User{ID: "u1", NotesCount: 1}, nil
+			},
+			fetchNotesFunc: func(_ model.UserID, until model.NoteID) ([]model.Note, error) {
+				if until == "" {
+					return []model.Note{{ID: "n1", RenoteID: &renoteID}}, nil
+				}
+				return []model.Note{}, nil
+			},
+			deleteNoteFunc: func(id model.NoteID) error {
+				deleteCount++
+				return errors.New("HTTP 500 returned from notes/delete: {\"error\":{\"info\":{\"e\":{\"message\":\"renderAnnounce: cannot render non-public note\"}}}}")
+			},
+			unpinNoteFunc: func(id model.NoteID) error {
+				return nil
+			},
+		}
+
+		logger := &mockLogger{}
+		uc := NewDeleteNotesUseCase(repo, &model.AppConfig{DeleteInterval: 0}, logger)
+
+		err := uc.Execute()
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if deleteCount != 1 {
+			t.Fatalf("Expected 1 delete attempt, got %d", deleteCount)
+		}
+		if len(logger.warnMsgs) == 0 {
+			t.Fatal("Expected a warning log for skipped renote")
+		}
+	})
 }
