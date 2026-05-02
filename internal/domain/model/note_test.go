@@ -2,7 +2,6 @@ package model
 
 import (
 	"testing"
-	"time"
 )
 
 func TestNote_ShouldKeep(t *testing.T) {
@@ -101,20 +100,5 @@ func TestAppConfig_IsSafeInterval(t *testing.T) {
 	c2 := AppConfig{DeleteInterval: 9}
 	if c2.IsSafeInterval() {
 		t.Error("9 should not be safe")
-	}
-}
-
-func TestNote_ShouldKeep_WithAgeFilter(t *testing.T) {
-	now := time.Now()
-	oldNote := Note{CreatedAt: now.Add(-72 * time.Hour)}
-	newNote := Note{CreatedAt: now.Add(-12 * time.Hour)}
-	config := AppConfig{DeleteOlderThanDays: 2}
-
-	if got := oldNote.ShouldKeep(&config); got {
-		t.Error("old note should not be kept by age filter")
-	}
-
-	if got := newNote.ShouldKeep(&config); !got {
-		t.Error("new note should be kept by age filter")
 	}
 }

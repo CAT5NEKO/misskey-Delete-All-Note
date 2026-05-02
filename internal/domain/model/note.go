@@ -38,12 +38,6 @@ func (n *Note) KindLabel() string {
 }
 
 func (n *Note) ShouldKeep(config *AppConfig) bool {
-	if config.DeleteOlderThanDays > 0 {
-		cutoff := time.Now().Add(-time.Duration(config.DeleteOlderThanDays) * 24 * time.Hour)
-		if n.CreatedAt.After(cutoff) {
-			return true
-		}
-	}
 	if config.KeepWithReactions && len(n.Reactions) > 0 {
 		return true
 	}
