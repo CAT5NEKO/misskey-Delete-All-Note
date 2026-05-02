@@ -31,6 +31,9 @@ func (i *deleteNotesInteractor) Execute() error {
 	if !i.config.IsSafeInterval() {
 		i.logger.Warn("Delete interval is set to less than 10 seconds. This may cause rate limiting.")
 	}
+	if i.config.DeleteOlderThanDays > 0 {
+		i.logger.Info(fmt.Sprintf("Deleting only notes older than %d days.", i.config.DeleteOlderThanDays))
+	}
 
 	user, err := i.repository.FetchUser()
 	if err != nil {
@@ -93,6 +96,10 @@ func isNonPublicRenoteDeleteError(err error) bool {
 func (i *deleteNotesInteractor) scanDeletionTargets(userID model.UserID) ([]model.Note, error) {
 	var targets []model.Note
 	var untilID model.NoteID
+	var cutoff time.Time
+	if i.config.DeleteOlderThanDays > 0 {
+		cutoff = time.Now().Add(-time.Duration(i.config.DeleteOlderThanDays) * 24 * time.Hour)
+	}
 
 	for {
 		batch, err := i.repository.FetchNotes(userID, untilID)
@@ -104,6 +111,9 @@ func (i *deleteNotesInteractor) scanDeletionTargets(userID model.UserID) ([]mode
 		}
 
 		for _, note := range batch {
+			if i.config.DeleteOlderThanDays > 0 && note.CreatedAt.After(cutoff) {
+				continue
+			}
 			if !note.ShouldKeep(i.config) {
 				targets = append(targets, note)
 			}

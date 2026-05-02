@@ -1,16 +1,18 @@
 package model
 
 type AppConfig struct {
-	DeleteInterval    int
-	KeepWithReactions bool
-	KeepWithRenotes   bool
+	DeleteInterval      int
+	DeleteOlderThanDays int
+	KeepWithReactions   bool
+	KeepWithRenotes     bool
 }
 
-func NewAppConfig(interval int, keepReactions bool, keepRenotes bool) *AppConfig {
+func NewAppConfig(interval int, deleteOlderThanDays int, keepReactions bool, keepRenotes bool) *AppConfig {
 	return &AppConfig{
-		DeleteInterval:    interval,
-		KeepWithReactions: keepReactions,
-		KeepWithRenotes:   keepRenotes,
+		DeleteInterval:      interval,
+		DeleteOlderThanDays: deleteOlderThanDays,
+		KeepWithReactions:   keepReactions,
+		KeepWithRenotes:     keepRenotes,
 	}
 }
 

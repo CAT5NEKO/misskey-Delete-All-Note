@@ -2,6 +2,7 @@ package model
 
 import (
 	"testing"
+	"time"
 )
 
 func TestNote_ShouldKeep(t *testing.T) {
@@ -14,33 +15,33 @@ func TestNote_ShouldKeep(t *testing.T) {
 		expected bool
 	}{
 		{
-			name: "NoReactionsNoRenotes_ShouldNotKeep",
-			note: Note{Reactions: map[string]int{}, RenoteCount: 0},
-			config: AppConfig{KeepWithReactions: true, KeepWithRenotes: true},
+			name:     "NoReactionsNoRenotes_ShouldNotKeep",
+			note:     Note{Reactions: map[string]int{}, RenoteCount: 0},
+			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: true},
 			expected: false,
 		},
 		{
-			name: "WithReactions_FlagTrue_ShouldKeep",
-			note: Note{Reactions: map[string]int{"like": 1}, RenoteCount: 0},
-			config: AppConfig{KeepWithReactions: true, KeepWithRenotes: false},
+			name:     "WithReactions_FlagTrue_ShouldKeep",
+			note:     Note{Reactions: map[string]int{"like": 1}, RenoteCount: 0},
+			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: false},
 			expected: true,
 		},
 		{
-			name: "WithReactions_FlagFalse_ShouldNotKeep",
-			note: Note{Reactions: map[string]int{"like": 1}, RenoteCount: 0},
-			config: AppConfig{KeepWithReactions: false, KeepWithRenotes: false},
+			name:     "WithReactions_FlagFalse_ShouldNotKeep",
+			note:     Note{Reactions: map[string]int{"like": 1}, RenoteCount: 0},
+			config:   AppConfig{KeepWithReactions: false, KeepWithRenotes: false},
 			expected: false,
 		},
 		{
-			name: "WithRenotes_FlagTrue_ShouldKeep",
-			note: Note{Reactions: map[string]int{}, RenoteCount: 5},
-			config: AppConfig{KeepWithReactions: false, KeepWithRenotes: true},
+			name:     "WithRenotes_FlagTrue_ShouldKeep",
+			note:     Note{Reactions: map[string]int{}, RenoteCount: 5},
+			config:   AppConfig{KeepWithReactions: false, KeepWithRenotes: true},
 			expected: true,
 		},
 		{
-			name: "WithRenotes_FlagFalse_ShouldNotKeep",
-			note: Note{Reactions: map[string]int{}, RenoteCount: 5},
-			config: AppConfig{KeepWithReactions: false, KeepWithRenotes: false},
+			name:     "WithRenotes_FlagFalse_ShouldNotKeep",
+			note:     Note{Reactions: map[string]int{}, RenoteCount: 5},
+			config:   AppConfig{KeepWithReactions: false, KeepWithRenotes: false},
 			expected: false,
 		},
 	}
@@ -100,5 +101,20 @@ func TestAppConfig_IsSafeInterval(t *testing.T) {
 	c2 := AppConfig{DeleteInterval: 9}
 	if c2.IsSafeInterval() {
 		t.Error("9 should not be safe")
+	}
+}
+
+func TestNote_ShouldKeep_WithAgeFilter(t *testing.T) {
+	now := time.Now()
+	oldNote := Note{CreatedAt: now.Add(-72 * time.Hour)}
+	newNote := Note{CreatedAt: now.Add(-12 * time.Hour)}
+	config := AppConfig{DeleteOlderThanDays: 2}
+
+	if got := oldNote.ShouldKeep(&config); got {
+		t.Error("old note should not be kept by age filter")
+	}
+
+	if got := newNote.ShouldKeep(&config); !got {
+		t.Error("new note should be kept by age filter")
 	}
 }

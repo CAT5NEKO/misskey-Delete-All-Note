@@ -4,6 +4,7 @@ import (
 	"errors"
 	"misskeyNotedel/internal/domain/model"
 	"testing"
+	"time"
 )
 
 type mockRepository struct {
@@ -47,7 +48,7 @@ func TestDeleteNotesUseCase_Execute(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expected no error, got %v", err)
 		}
-		
+
 		foundNoTargets := false
 		for _, msg := range logger.infoMsgs {
 			if msg == "No deletion targets found." {
@@ -66,8 +67,8 @@ func TestDeleteNotesUseCase_Execute(t *testing.T) {
 		repo := &mockRepository{
 			fetchUserFunc: func() (*model.User, error) {
 				return &model.User{
-					ID: "u1", 
-					NotesCount: 2,
+					ID:          "u1",
+					NotesCount:  2,
 					PinnedNotes: []model.Note{{ID: "p1"}},
 				}, nil
 			},
@@ -156,6 +157,52 @@ func TestDeleteNotesUseCase_Execute(t *testing.T) {
 		}
 		if len(logger.warnMsgs) == 0 {
 			t.Fatal("Expected a warning log for skipped renote")
+		}
+	})
+
+	t.Run("Success_OnlyDeleteOlderThanDays", func(t *testing.T) {
+		deleteCount := 0
+		now := time.Now()
+		repo := &mockRepository{
+			fetchUserFunc: func() (*model.User, error) {
+				return &model.User{ID: "u1", NotesCount: 2}, nil
+			},
+			fetchNotesFunc: func(_ model.UserID, until model.NoteID) ([]model.Note, error) {
+				if until == "" {
+					return []model.Note{
+						{ID: "new", CreatedAt: now.Add(-24 * time.Hour)},
+						{ID: "old", CreatedAt: now.Add(-72 * time.Hour)},
+					}, nil
+				}
+				return []model.Note{}, nil
+			},
+			deleteNoteFunc: func(id model.NoteID) error {
+				deleteCount++
+				return nil
+			},
+		}
+		logger := &mockLogger{}
+		config := &model.AppConfig{DeleteInterval: 10, DeleteOlderThanDays: 2}
+		uc := NewDeleteNotesUseCase(repo, config, logger)
+
+		err := uc.Execute()
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+
+		if deleteCount != 1 {
+			t.Fatalf("Expected 1 delete for old note, got %d", deleteCount)
+		}
+
+		foundLog := false
+		for _, msg := range logger.infoMsgs {
+			if msg == "Deleting only notes older than 2 days." {
+				foundLog = true
+				break
+			}
+		}
+		if !foundLog {
+			t.Error("Expected age filter log message")
 		}
 	})
 }

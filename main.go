@@ -30,6 +30,7 @@ func main() {
 	_ = godotenv.Load()
 
 	deleteInterval := getEnvInt("DELETE_INTERVAL", 30)
+	deleteOlderThanDays := getEnvInt("DELETE_OLDER_THAN_DAYS", 0)
 	keepReactions := getEnvBool("KEEP_WITH_REACTIONS", false)
 	keepRenotes := getEnvBool("KEEP_WITH_RENOTES", false)
 
@@ -38,7 +39,7 @@ func main() {
 		log.Fatalf("Failed to initialize client: %v", err)
 	}
 
-	config := model.NewAppConfig(deleteInterval, keepReactions, keepRenotes)
+	config := model.NewAppConfig(deleteInterval, deleteOlderThanDays, keepReactions, keepRenotes)
 	logger := &consoleLogger{}
 	deleteUseCase := usecase.NewDeleteNotesUseCase(client, config, logger)
 
