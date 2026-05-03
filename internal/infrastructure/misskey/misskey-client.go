@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"misskeyNotedel/internal/domain/model"
+	"misskeyNotedel/internal/domain/repository"
 	"net/http"
 	"os"
 	"strings"
@@ -74,10 +75,16 @@ func (c *MisskeyClient) FetchUser() (*model.User, error) {
 	return &user, nil
 }
 
-func (c *MisskeyClient) FetchNotes(userID model.UserID, untilID model.NoteID) ([]model.Note, error) {
+func (c *MisskeyClient) FetchNotes(userID model.UserID, untilID model.NoteID, opts repository.FetchNotesOptions) ([]model.Note, error) {
 	args := map[string]interface{}{
-		"userId": userID,
-		"limit":  100,
+		"userId":           userID,
+		"limit":            100,
+	}
+	if opts.WithReplies {
+		args["withReplies"] = true
+	}
+	if opts.WithChannelNotes {
+		args["withChannelNotes"] = true
 	}
 	if untilID != "" {
 		args["untilId"] = untilID

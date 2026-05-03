@@ -3,20 +3,21 @@ package usecase
 import (
 	"errors"
 	"misskeyNotedel/internal/domain/model"
+	"misskeyNotedel/internal/domain/repository"
 	"testing"
 	"time"
 )
 
 type mockRepository struct {
 	fetchUserFunc  func() (*model.User, error)
-	fetchNotesFunc func(userID model.UserID, untilID model.NoteID) ([]model.Note, error)
+	fetchNotesFunc func(userID model.UserID, untilID model.NoteID, opts repository.FetchNotesOptions) ([]model.Note, error)
 	deleteNoteFunc func(noteID model.NoteID) error
 	unpinNoteFunc  func(noteID model.NoteID) error
 }
 
 func (m *mockRepository) FetchUser() (*model.User, error) { return m.fetchUserFunc() }
-func (m *mockRepository) FetchNotes(u model.UserID, i model.NoteID) ([]model.Note, error) {
-	return m.fetchNotesFunc(u, i)
+func (m *mockRepository) FetchNotes(u model.UserID, i model.NoteID, opts repository.FetchNotesOptions) ([]model.Note, error) {
+	return m.fetchNotesFunc(u, i, opts)
 }
 func (m *mockRepository) DeleteNote(i model.NoteID) error { return m.deleteNoteFunc(i) }
 func (m *mockRepository) UnpinNote(i model.NoteID) error  { return m.unpinNoteFunc(i) }
@@ -37,7 +38,7 @@ func TestDeleteNotesUseCase_Execute(t *testing.T) {
 			fetchUserFunc: func() (*model.User, error) {
 				return &model.User{ID: "u1", NotesCount: 0}, nil
 			},
-			fetchNotesFunc: func(_ model.UserID, _ model.NoteID) ([]model.Note, error) {
+			fetchNotesFunc: func(_ model.UserID, _ model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
 				return []model.Note{}, nil
 			},
 		}
@@ -76,7 +77,13 @@ func TestDeleteNotesUseCase_Execute(t *testing.T) {
 				unpinCount++
 				return nil
 			},
-			fetchNotesFunc: func(_ model.UserID, until model.NoteID) ([]model.Note, error) {
+			fetchNotesFunc: func(_ model.UserID, until model.NoteID, opts repository.FetchNotesOptions) ([]model.Note, error) {
+				if !opts.WithReplies {
+					t.Fatal("expected replies to be included in the scan")
+				}
+				if !opts.WithChannelNotes {
+					t.Fatal("expected channel notes to be included in the scan")
+				}
 				if until == "" {
 					return []model.Note{
 						{ID: "n1", RenoteCount: 0},
@@ -130,7 +137,7 @@ func TestDeleteNotesUseCase_Execute(t *testing.T) {
 			fetchUserFunc: func() (*model.User, error) {
 				return &model.User{ID: "u1", NotesCount: 1}, nil
 			},
-			fetchNotesFunc: func(_ model.UserID, until model.NoteID) ([]model.Note, error) {
+			fetchNotesFunc: func(_ model.UserID, until model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
 				if until == "" {
 					return []model.Note{{ID: "n1", RenoteID: &renoteID}}, nil
 				}
@@ -167,7 +174,7 @@ func TestDeleteNotesUseCase_Execute(t *testing.T) {
 			fetchUserFunc: func() (*model.User, error) {
 				return &model.User{ID: "u1", NotesCount: 2}, nil
 			},
-			fetchNotesFunc: func(_ model.UserID, until model.NoteID) ([]model.Note, error) {
+			fetchNotesFunc: func(_ model.UserID, until model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
 				if until == "" {
 					return []model.Note{
 						{ID: "new", CreatedAt: now.Add(-24 * time.Hour)},
@@ -203,6 +210,45 @@ func TestDeleteNotesUseCase_Execute(t *testing.T) {
 		}
 		if !foundLog {
 			t.Error("Expected age filter log message")
+		}
+	})
+
+	t.Run("Success_IncludesRepliesInScan", func(t *testing.T) {
+		deleteCount := 0
+		repliesRequested := false
+		repo := &mockRepository{
+			fetchUserFunc: func() (*model.User, error) {
+				return &model.User{ID: "u1", NotesCount: 1}, nil
+			},
+			fetchNotesFunc: func(_ model.UserID, until model.NoteID, opts repository.FetchNotesOptions) ([]model.Note, error) {
+				if opts.WithReplies {
+					repliesRequested = true
+				}
+				if !opts.WithChannelNotes {
+					t.Fatal("expected channel notes to be included in the scan")
+				}
+				if until == "" {
+					return []model.Note{{ID: "reply-1"}}, nil
+				}
+				return []model.Note{}, nil
+			},
+			deleteNoteFunc: func(id model.NoteID) error {
+				deleteCount++
+				return nil
+			},
+		}
+		logger := &mockLogger{}
+		uc := NewDeleteNotesUseCase(repo, &model.AppConfig{DeleteInterval: 0}, logger)
+
+		err := uc.Execute()
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if !repliesRequested {
+			t.Fatal("Expected reply notes to be requested")
+		}
+		if deleteCount != 1 {
+			t.Fatalf("Expected 1 delete for reply note, got %d", deleteCount)
 		}
 	})
 }

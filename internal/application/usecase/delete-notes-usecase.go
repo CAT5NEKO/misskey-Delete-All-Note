@@ -102,7 +102,10 @@ func (i *deleteNotesInteractor) scanDeletionTargets(userID model.UserID) ([]mode
 	}
 
 	for {
-		batch, err := i.repository.FetchNotes(userID, untilID)
+		batch, err := i.repository.FetchNotes(userID, untilID, repository.FetchNotesOptions{
+			WithReplies:      true,
+			WithChannelNotes: true,
+		})
 		if err != nil {
 			return nil, err
 		}
