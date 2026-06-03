@@ -9,10 +9,14 @@ import (
 )
 
 type mockRepository struct {
-	fetchUserFunc  func() (*model.User, error)
-	fetchNotesFunc func(userID model.UserID, untilID model.NoteID, opts repository.FetchNotesOptions) ([]model.Note, error)
-	deleteNoteFunc func(noteID model.NoteID) error
-	unpinNoteFunc  func(noteID model.NoteID) error
+	fetchUserFunc                 func() (*model.User, error)
+	fetchNotesFunc                func(userID model.UserID, untilID model.NoteID, opts repository.FetchNotesOptions) ([]model.Note, error)
+	deleteNoteFunc                func(noteID model.NoteID) error
+	unpinNoteFunc                 func(noteID model.NoteID) error
+	fetchDriveFilesFunc           func(folderID *model.DriveFolderID, untilID model.DriveFileID) ([]model.DriveFile, error)
+	fetchDriveFoldersFunc         func(parentID *model.DriveFolderID, untilID model.DriveFolderID) ([]model.DriveFolder, error)
+	deleteDriveFileFunc           func(fileID model.DriveFileID) error
+	driveFileHasAttachedNotesFunc func(fileID model.DriveFileID) (bool, error)
 }
 
 func (m *mockRepository) FetchUser() (*model.User, error) { return m.fetchUserFunc() }
@@ -21,6 +25,30 @@ func (m *mockRepository) FetchNotes(u model.UserID, i model.NoteID, opts reposit
 }
 func (m *mockRepository) DeleteNote(i model.NoteID) error { return m.deleteNoteFunc(i) }
 func (m *mockRepository) UnpinNote(i model.NoteID) error  { return m.unpinNoteFunc(i) }
+func (m *mockRepository) FetchDriveFiles(folderID *model.DriveFolderID, i model.DriveFileID) ([]model.DriveFile, error) {
+	if m.fetchDriveFilesFunc == nil {
+		return nil, errors.New("FetchDriveFiles not implemented")
+	}
+	return m.fetchDriveFilesFunc(folderID, i)
+}
+func (m *mockRepository) FetchDriveFolders(parentID *model.DriveFolderID, i model.DriveFolderID) ([]model.DriveFolder, error) {
+	if m.fetchDriveFoldersFunc == nil {
+		return []model.DriveFolder{}, nil
+	}
+	return m.fetchDriveFoldersFunc(parentID, i)
+}
+func (m *mockRepository) DeleteDriveFile(i model.DriveFileID) error {
+	if m.deleteDriveFileFunc == nil {
+		return errors.New("DeleteDriveFile not implemented")
+	}
+	return m.deleteDriveFileFunc(i)
+}
+func (m *mockRepository) DriveFileHasAttachedNotes(i model.DriveFileID) (bool, error) {
+	if m.driveFileHasAttachedNotesFunc == nil {
+		return false, errors.New("DriveFileHasAttachedNotes not implemented")
+	}
+	return m.driveFileHasAttachedNotesFunc(i)
+}
 
 type mockLogger struct {
 	infoMsgs  []string
@@ -249,6 +277,290 @@ func TestDeleteNotesUseCase_Execute(t *testing.T) {
 		}
 		if deleteCount != 1 {
 			t.Fatalf("Expected 1 delete for reply note, got %d", deleteCount)
+		}
+	})
+
+	t.Run("Success_DriveDeletion_All", func(t *testing.T) {
+		deleteCount := 0
+		now := time.Now()
+		repo := &mockRepository{
+			fetchUserFunc: func() (*model.User, error) {
+				return &model.User{ID: "u1", NotesCount: 0}, nil
+			},
+			fetchNotesFunc: func(_ model.UserID, _ model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
+				return []model.Note{}, nil
+			},
+			fetchDriveFilesFunc: func(_ *model.DriveFolderID, until model.DriveFileID) ([]model.DriveFile, error) {
+				if until == "" {
+					return []model.DriveFile{{ID: "f1", Name: "a.jpg", CreatedAt: now.Add(-48 * time.Hour)}}, nil
+				}
+				return []model.DriveFile{}, nil
+			},
+			deleteDriveFileFunc: func(id model.DriveFileID) error {
+				deleteCount++
+				return nil
+			},
+		}
+		logger := &mockLogger{}
+		config := &model.AppConfig{DeleteInterval: 0, DeleteDriveFiles: true}
+		uc := NewDeleteNotesUseCase(repo, config, logger)
+
+		err := uc.Execute()
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if deleteCount != 1 {
+			t.Fatalf("Expected 1 drive delete, got %d", deleteCount)
+		}
+	})
+
+	t.Run("Success_DriveDeletion_TraversesFolders", func(t *testing.T) {
+		deleteCount := 0
+		now := time.Now()
+		folderID := model.DriveFolderID("folder-1")
+		repo := &mockRepository{
+			fetchUserFunc: func() (*model.User, error) {
+				return &model.User{ID: "u1", NotesCount: 0}, nil
+			},
+			fetchNotesFunc: func(_ model.UserID, _ model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
+				return []model.Note{}, nil
+			},
+			fetchDriveFilesFunc: func(parent *model.DriveFolderID, until model.DriveFileID) ([]model.DriveFile, error) {
+				if until != "" {
+					return []model.DriveFile{}, nil
+				}
+				if parent == nil {
+					return []model.DriveFile{{ID: "root", Name: "root.png", CreatedAt: now.Add(-48 * time.Hour)}}, nil
+				}
+				if *parent == folderID {
+					return []model.DriveFile{{ID: "child", Name: "child.png", CreatedAt: now.Add(-48 * time.Hour)}}, nil
+				}
+				return []model.DriveFile{}, nil
+			},
+			fetchDriveFoldersFunc: func(parent *model.DriveFolderID, until model.DriveFolderID) ([]model.DriveFolder, error) {
+				if until != "" {
+					return []model.DriveFolder{}, nil
+				}
+				if parent == nil {
+					return []model.DriveFolder{{ID: folderID}}, nil
+				}
+				return []model.DriveFolder{}, nil
+			},
+			deleteDriveFileFunc: func(id model.DriveFileID) error {
+				deleteCount++
+				return nil
+			},
+		}
+		logger := &mockLogger{}
+		config := &model.AppConfig{DeleteInterval: 0, DeleteDriveFiles: true}
+		uc := NewDeleteNotesUseCase(repo, config, logger)
+
+		err := uc.Execute()
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if deleteCount != 2 {
+			t.Fatalf("Expected 2 drive deletes (root + folder), got %d", deleteCount)
+		}
+	})
+
+	t.Run("Success_DriveDeletion_UnusedOnly", func(t *testing.T) {
+		deleteCount := 0
+		now := time.Now()
+		repo := &mockRepository{
+			fetchUserFunc: func() (*model.User, error) {
+				return &model.User{ID: "u1", NotesCount: 0}, nil
+			},
+			fetchNotesFunc: func(_ model.UserID, _ model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
+				return []model.Note{}, nil
+			},
+			fetchDriveFilesFunc: func(_ *model.DriveFolderID, until model.DriveFileID) ([]model.DriveFile, error) {
+				if until == "" {
+					return []model.DriveFile{
+						{ID: "f1", Name: "attached.png", CreatedAt: now.Add(-48 * time.Hour)},
+						{ID: "f2", Name: "unused.png", CreatedAt: now.Add(-48 * time.Hour)},
+					}, nil
+				}
+				return []model.DriveFile{}, nil
+			},
+			driveFileHasAttachedNotesFunc: func(id model.DriveFileID) (bool, error) {
+				return id == "f1", nil
+			},
+			deleteDriveFileFunc: func(id model.DriveFileID) error {
+				deleteCount++
+				return nil
+			},
+		}
+		logger := &mockLogger{}
+		config := &model.AppConfig{DeleteInterval: 0, DeleteDriveFiles: true, DeleteDriveUnusedOnly: true}
+		uc := NewDeleteNotesUseCase(repo, config, logger)
+
+		err := uc.Execute()
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if deleteCount != 1 {
+			t.Fatalf("Expected 1 drive delete for unused file, got %d", deleteCount)
+		}
+	})
+
+	t.Run("Success_DriveOnlyMode", func(t *testing.T) {
+		deleteCount := 0
+		now := time.Now()
+		repo := &mockRepository{
+			fetchUserFunc: func() (*model.User, error) {
+				return &model.User{ID: "u1"}, nil
+			},
+			fetchNotesFunc: func(_ model.UserID, _ model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
+				t.Fatal("FetchNotes should not be called in drive-only mode")
+				return nil, nil
+			},
+			fetchDriveFilesFunc: func(_ *model.DriveFolderID, until model.DriveFileID) ([]model.DriveFile, error) {
+				if until == "" {
+					return []model.DriveFile{{ID: "f1", Name: "drive-only.png", CreatedAt: now.Add(-48 * time.Hour)}}, nil
+				}
+				return []model.DriveFile{}, nil
+			},
+			deleteDriveFileFunc: func(id model.DriveFileID) error {
+				deleteCount++
+				return nil
+			},
+		}
+		logger := &mockLogger{}
+		config := &model.AppConfig{DeleteInterval: 0, DeleteDriveOnly: true}
+		uc := NewDeleteNotesUseCase(repo, config, logger)
+
+		err := uc.Execute()
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if deleteCount != 1 {
+			t.Fatalf("Expected 1 drive delete in drive-only mode, got %d", deleteCount)
+		}
+	})
+
+	t.Run("Success_DriveDeletion_SkipsProfileFiles", func(t *testing.T) {
+		deleteCount := 0
+		now := time.Now()
+		avatarID := model.DriveFileID("avatar")
+		bannerID := model.DriveFileID("banner")
+		repo := &mockRepository{
+			fetchUserFunc: func() (*model.User, error) {
+				return &model.User{ID: "u1", AvatarID: &avatarID, BannerID: &bannerID}, nil
+			},
+			fetchNotesFunc: func(_ model.UserID, _ model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
+				t.Fatal("FetchNotes should not be called in drive-only mode")
+				return nil, nil
+			},
+			fetchDriveFilesFunc: func(_ *model.DriveFolderID, until model.DriveFileID) ([]model.DriveFile, error) {
+				if until == "" {
+					return []model.DriveFile{
+						{ID: avatarID, Name: "avatar.png", CreatedAt: now.Add(-48 * time.Hour)},
+						{ID: bannerID, Name: "banner.png", CreatedAt: now.Add(-48 * time.Hour)},
+						{ID: "f3", Name: "other.png", CreatedAt: now.Add(-48 * time.Hour)},
+					}, nil
+				}
+				return []model.DriveFile{}, nil
+			},
+			deleteDriveFileFunc: func(id model.DriveFileID) error {
+				deleteCount++
+				return nil
+			},
+		}
+		logger := &mockLogger{}
+		config := &model.AppConfig{DeleteInterval: 0, DeleteDriveOnly: true}
+		uc := NewDeleteNotesUseCase(repo, config, logger)
+
+		err := uc.Execute()
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if deleteCount != 1 {
+			t.Fatalf("Expected 1 drive delete after skipping profile files, got %d", deleteCount)
+		}
+	})
+
+	t.Run("Success_DriveDeletion_SkipsMissingFile", func(t *testing.T) {
+		deleteCount := 0
+		now := time.Now()
+		repo := &mockRepository{
+			fetchUserFunc: func() (*model.User, error) {
+				return &model.User{ID: "u1"}, nil
+			},
+			fetchNotesFunc: func(_ model.UserID, _ model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
+				return []model.Note{}, nil
+			},
+			fetchDriveFilesFunc: func(_ *model.DriveFolderID, until model.DriveFileID) ([]model.DriveFile, error) {
+				if until == "" {
+					return []model.DriveFile{{ID: "missing", Name: "missing.png", CreatedAt: now.Add(-48 * time.Hour)}}, nil
+				}
+				return []model.DriveFile{}, nil
+			},
+			deleteDriveFileFunc: func(id model.DriveFileID) error {
+				deleteCount++
+				return errors.New("HTTP 400 returned from drive/files/delete: {\"error\":{\"code\":\"NO_SUCH_FILE\"}}")
+			},
+		}
+		logger := &mockLogger{}
+		config := &model.AppConfig{DeleteInterval: 0, DeleteDriveFiles: true}
+		uc := NewDeleteNotesUseCase(repo, config, logger)
+
+		err := uc.Execute()
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if deleteCount != 1 {
+			t.Fatalf("Expected 1 delete attempt for missing file, got %d", deleteCount)
+		}
+		if len(logger.warnMsgs) == 0 {
+			t.Fatal("Expected a warning log for missing drive file")
+		}
+	})
+
+	t.Run("Success_DriveDeletion_SkipProfileBeforeAttachmentCheck", func(t *testing.T) {
+		deleteCount := 0
+		attachmentChecks := 0
+		now := time.Now()
+		avatarID := model.DriveFileID("avatar")
+		repo := &mockRepository{
+			fetchUserFunc: func() (*model.User, error) {
+				return &model.User{ID: "u1", AvatarID: &avatarID}, nil
+			},
+			fetchNotesFunc: func(_ model.UserID, _ model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
+				return []model.Note{}, nil
+			},
+			fetchDriveFilesFunc: func(_ *model.DriveFolderID, until model.DriveFileID) ([]model.DriveFile, error) {
+				if until == "" {
+					return []model.DriveFile{
+						{ID: avatarID, Name: "avatar.png", CreatedAt: now.Add(-48 * time.Hour)},
+						{ID: "f1", Name: "attached.png", CreatedAt: now.Add(-48 * time.Hour)},
+						{ID: "f2", Name: "free.png", CreatedAt: now.Add(-48 * time.Hour)},
+					}, nil
+				}
+				return []model.DriveFile{}, nil
+			},
+			driveFileHasAttachedNotesFunc: func(id model.DriveFileID) (bool, error) {
+				attachmentChecks++
+				return id == "f1", nil
+			},
+			deleteDriveFileFunc: func(id model.DriveFileID) error {
+				deleteCount++
+				return nil
+			},
+		}
+		logger := &mockLogger{}
+		config := &model.AppConfig{DeleteInterval: 0, DeleteDriveFiles: true, DeleteDriveUnusedOnly: true}
+		uc := NewDeleteNotesUseCase(repo, config, logger)
+
+		err := uc.Execute()
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if deleteCount != 1 {
+			t.Fatalf("Expected 1 drive delete after skipping profile/attached files, got %d", deleteCount)
+		}
+		if attachmentChecks != 2 {
+			t.Fatalf("Expected 2 attachment checks (non-profile files only), got %d", attachmentChecks)
 		}
 	})
 }

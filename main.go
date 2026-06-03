@@ -33,13 +33,16 @@ func main() {
 	deleteOlderThanDays := getEnvInt("DELETE_OLDER_THAN_DAYS", 0)
 	keepReactions := getEnvBool("KEEP_WITH_REACTIONS", false)
 	keepRenotes := getEnvBool("KEEP_WITH_RENOTES", false)
+	deleteDriveFiles := getEnvBool("DELETE_DRIVE_FILES", false)
+	deleteDriveUnusedOnly := getEnvBool("DELETE_DRIVE_UNUSED_ONLY", false)
+	deleteDriveOnly := getEnvBool("DELETE_DRIVE_ONLY", false)
 
 	client, err := misskey.NewMisskeyClient()
 	if err != nil {
 		log.Fatalf("Failed to initialize client: %v", err)
 	}
 
-	config := model.NewAppConfig(deleteInterval, deleteOlderThanDays, keepReactions, keepRenotes)
+	config := model.NewAppConfig(deleteInterval, deleteOlderThanDays, keepReactions, keepRenotes, deleteDriveFiles, deleteDriveUnusedOnly, deleteDriveOnly)
 	logger := &consoleLogger{}
 	deleteUseCase := usecase.NewDeleteNotesUseCase(client, config, logger)
 

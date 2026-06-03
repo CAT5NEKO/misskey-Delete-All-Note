@@ -77,8 +77,8 @@ func (c *MisskeyClient) FetchUser() (*model.User, error) {
 
 func (c *MisskeyClient) FetchNotes(userID model.UserID, untilID model.NoteID, opts repository.FetchNotesOptions) ([]model.Note, error) {
 	args := map[string]interface{}{
-		"userId":           userID,
-		"limit":            100,
+		"userId": userID,
+		"limit":  100,
 	}
 	if opts.WithReplies {
 		args["withReplies"] = true
@@ -101,4 +101,54 @@ func (c *MisskeyClient) DeleteNote(noteID model.NoteID) error {
 
 func (c *MisskeyClient) UnpinNote(noteID model.NoteID) error {
 	return c.post("i/unpin", map[string]interface{}{"noteId": noteID}, nil)
+}
+
+func (c *MisskeyClient) FetchDriveFiles(folderID *model.DriveFolderID, untilID model.DriveFileID) ([]model.DriveFile, error) {
+	args := map[string]interface{}{
+		"limit": 100,
+		"sort":  "-createdAt",
+	}
+	if folderID != nil {
+		args["folderId"] = *folderID
+	}
+	if untilID != "" {
+		args["untilId"] = untilID
+	}
+
+	var files []model.DriveFile
+	err := c.post("drive/files", args, &files)
+	return files, err
+}
+
+func (c *MisskeyClient) FetchDriveFolders(parentID *model.DriveFolderID, untilID model.DriveFolderID) ([]model.DriveFolder, error) {
+	args := map[string]interface{}{
+		"limit": 100,
+	}
+	if parentID != nil {
+		args["folderId"] = *parentID
+	}
+	if untilID != "" {
+		args["untilId"] = untilID
+	}
+
+	var folders []model.DriveFolder
+	err := c.post("drive/folders", args, &folders)
+	return folders, err
+}
+
+func (c *MisskeyClient) DeleteDriveFile(fileID model.DriveFileID) error {
+	return c.post("drive/files/delete", map[string]interface{}{"fileId": fileID}, nil)
+}
+
+func (c *MisskeyClient) DriveFileHasAttachedNotes(fileID model.DriveFileID) (bool, error) {
+	args := map[string]interface{}{
+		"fileId": fileID,
+		"limit":  1,
+	}
+
+	var notes []model.Note
+	if err := c.post("drive/files/attached-notes", args, &notes); err != nil {
+		return false, err
+	}
+	return len(notes) > 0, nil
 }
