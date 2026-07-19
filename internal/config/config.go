@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -70,11 +71,15 @@ func ParseDuration(s string) (time.Duration, error) {
 	return time.Duration(days*float64(24*time.Hour)) + d, nil
 }
 
+func defaultLockFilePath() string {
+	return filepath.Join(os.TempDir(), "misskeyNotedel.lock")
+}
+
 func Load() (*Config, error) {
 	raw := rawConfig{
 		deleteInterval: envIntDefault("DELETE_INTERVAL", 30),
 		maxDelete:      envIntDefault("MAX_DELETE", 0),
-		lockFile:       envStrDefault("LOCK_FILE", "/tmp/misskeyNotedel.lock"),
+		lockFile:       envStrDefault("LOCK_FILE", defaultLockFilePath()),
 	}
 
 	readEnvString(&raw.token, "TOKEN", "")
@@ -129,7 +134,7 @@ func registerFlags(fs *flag.FlagSet, r *rawConfig) {
 	fs.BoolVar(&r.verbose, "v", r.verbose, "Short for --verbose")
 	fs.BoolVar(&r.quiet, "quiet", r.quiet, "Quiet mode (errors only)")
 	fs.BoolVar(&r.quiet, "q", r.quiet, "Short for --quiet")
-	fs.StringVar(&r.lockFile, "lock-file", r.lockFile, "Lock file path")
+	fs.StringVar(&r.lockFile, "lock-file", r.lockFile, "Lock file path (default: OS temp dir)")
 }
 
 func (r *rawConfig) toConfig() (*Config, error) {
@@ -175,7 +180,7 @@ func (r *rawConfig) toConfig() (*Config, error) {
 
 	lockFile := r.lockFile
 	if lockFile == "" {
-		lockFile = "/tmp/misskeyNotedel.lock"
+		lockFile = defaultLockFilePath()
 	}
 
 	return &Config{
