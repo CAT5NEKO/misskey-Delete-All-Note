@@ -38,6 +38,16 @@ func (n *Note) KindLabel() string {
 }
 
 func (n *Note) ShouldKeep(config *AppConfig) bool {
+	if config.KeepConditionMode == "and" {
+		if config.KeepWithReactions && len(n.Reactions) == 0 {
+			return false
+		}
+		if config.KeepWithRenotes && n.RenoteCount == 0 {
+			return false
+		}
+		return config.KeepWithReactions || config.KeepWithRenotes
+	}
+
 	if config.KeepWithReactions && len(n.Reactions) > 0 {
 		return true
 	}

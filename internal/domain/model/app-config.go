@@ -1,25 +1,23 @@
 package model
 
-type AppConfig struct {
-	DeleteInterval        int
-	DeleteOlderThanDays   int
-	KeepWithReactions     bool
-	KeepWithRenotes       bool
-	DeleteDriveFiles      bool
-	DeleteDriveUnusedOnly bool
-	DeleteDriveOnly       bool
-}
+import "time"
 
-func NewAppConfig(interval int, deleteOlderThanDays int, keepReactions bool, keepRenotes bool, deleteDriveFiles bool, deleteDriveUnusedOnly bool, deleteDriveOnly bool) *AppConfig {
-	return &AppConfig{
-		DeleteInterval:        interval,
-		DeleteOlderThanDays:   deleteOlderThanDays,
-		KeepWithReactions:     keepReactions,
-		KeepWithRenotes:       keepRenotes,
-		DeleteDriveFiles:      deleteDriveFiles,
-		DeleteDriveUnusedOnly: deleteDriveUnusedOnly,
-		DeleteDriveOnly:       deleteDriveOnly,
-	}
+type AppConfig struct {
+	DeleteInterval    int
+	NoteOlderThan     time.Duration
+	KeepWithReactions bool
+	KeepWithRenotes   bool
+	KeepConditionMode string
+	DriveOlderThan    time.Duration
+	DriveMode         string
+	SkipNotes         bool
+	DryRun            bool
+	Yes               bool
+	MaxDelete         int
+	Force             bool
+	Verbose           bool
+	Quiet             bool
+	LockFile          string
 }
 
 func (c *AppConfig) IsSafeInterval() bool {

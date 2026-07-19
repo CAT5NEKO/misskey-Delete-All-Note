@@ -16,32 +16,94 @@ func TestNote_ShouldKeep(t *testing.T) {
 		{
 			name:     "NoReactionsNoRenotes_ShouldNotKeep",
 			note:     Note{Reactions: map[string]int{}, RenoteCount: 0},
-			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: true},
+			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: true, KeepConditionMode: "or"},
 			expected: false,
 		},
 		{
-			name:     "WithReactions_FlagTrue_ShouldKeep",
+			name:     "WithReactions_FlagTrue_OrMode_ShouldKeep",
 			note:     Note{Reactions: map[string]int{"like": 1}, RenoteCount: 0},
-			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: false},
+			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: false, KeepConditionMode: "or"},
 			expected: true,
 		},
 		{
 			name:     "WithReactions_FlagFalse_ShouldNotKeep",
 			note:     Note{Reactions: map[string]int{"like": 1}, RenoteCount: 0},
-			config:   AppConfig{KeepWithReactions: false, KeepWithRenotes: false},
+			config:   AppConfig{KeepWithReactions: false, KeepWithRenotes: false, KeepConditionMode: "or"},
 			expected: false,
 		},
 		{
-			name:     "WithRenotes_FlagTrue_ShouldKeep",
+			name:     "WithRenotes_FlagTrue_OrMode_ShouldKeep",
 			note:     Note{Reactions: map[string]int{}, RenoteCount: 5},
-			config:   AppConfig{KeepWithReactions: false, KeepWithRenotes: true},
+			config:   AppConfig{KeepWithReactions: false, KeepWithRenotes: true, KeepConditionMode: "or"},
 			expected: true,
 		},
 		{
 			name:     "WithRenotes_FlagFalse_ShouldNotKeep",
 			note:     Note{Reactions: map[string]int{}, RenoteCount: 5},
-			config:   AppConfig{KeepWithReactions: false, KeepWithRenotes: false},
+			config:   AppConfig{KeepWithReactions: false, KeepWithRenotes: false, KeepConditionMode: "or"},
 			expected: false,
+		},
+		// AND mode tests
+		{
+			name:     "AndMode_BothFlags_BothProperties_ShouldKeep",
+			note:     Note{Reactions: map[string]int{"like": 1}, RenoteCount: 5},
+			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: true, KeepConditionMode: "and"},
+			expected: true,
+		},
+		{
+			name:     "AndMode_BothFlags_OnlyReactions_ShouldNotKeep",
+			note:     Note{Reactions: map[string]int{"like": 1}, RenoteCount: 0},
+			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: true, KeepConditionMode: "and"},
+			expected: false,
+		},
+		{
+			name:     "AndMode_BothFlags_OnlyRenotes_ShouldNotKeep",
+			note:     Note{Reactions: map[string]int{}, RenoteCount: 5},
+			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: true, KeepConditionMode: "and"},
+			expected: false,
+		},
+		{
+			name:     "AndMode_BothFlags_Neither_ShouldNotKeep",
+			note:     Note{Reactions: map[string]int{}, RenoteCount: 0},
+			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: true, KeepConditionMode: "and"},
+			expected: false,
+		},
+		{
+			name:     "AndMode_OnlyReactionsFlag_HasReactions_ShouldKeep",
+			note:     Note{Reactions: map[string]int{"like": 1}, RenoteCount: 0},
+			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: false, KeepConditionMode: "and"},
+			expected: true,
+		},
+		{
+			name:     "AndMode_OnlyReactionsFlag_NoReactions_ShouldNotKeep",
+			note:     Note{Reactions: map[string]int{}, RenoteCount: 0},
+			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: false, KeepConditionMode: "and"},
+			expected: false,
+		},
+		{
+			name:     "AndMode_OnlyRenotesFlag_HasRenotes_ShouldKeep",
+			note:     Note{Reactions: map[string]int{}, RenoteCount: 5},
+			config:   AppConfig{KeepWithReactions: false, KeepWithRenotes: true, KeepConditionMode: "and"},
+			expected: true,
+		},
+		{
+			name:     "AndMode_OnlyRenotesFlag_NoRenotes_ShouldNotKeep",
+			note:     Note{Reactions: map[string]int{}, RenoteCount: 0},
+			config:   AppConfig{KeepWithReactions: false, KeepWithRenotes: true, KeepConditionMode: "and"},
+			expected: false,
+		},
+		{
+			name:     "AndMode_NeitherFlag_ShouldNotKeep",
+			note:     Note{Reactions: map[string]int{"like": 1}, RenoteCount: 5},
+			config:   AppConfig{KeepWithReactions: false, KeepWithRenotes: false, KeepConditionMode: "and"},
+			expected: false,
+		},
+		// Default mode (empty) should behave as "or"
+		{
+			name:     "DefaultMode_WithReactions_ShouldKeep",
+			note:     Note{Reactions: map[string]int{"like": 1}, RenoteCount: 0},
+			config:   AppConfig{KeepWithReactions: true, KeepWithRenotes: false},
+			expected: true,
 		},
 	}
 

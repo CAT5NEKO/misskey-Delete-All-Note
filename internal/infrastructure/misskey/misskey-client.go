@@ -8,11 +8,34 @@ import (
 	"misskeyNotedel/internal/domain/model"
 	"misskeyNotedel/internal/domain/repository"
 	"net/http"
-	"os"
 	"strings"
-
-	"github.com/joho/godotenv"
+	"time"
 )
+
+type APIError struct {
+	StatusCode int
+	Code       string
+	Message    string
+}
+
+func (e *APIError) Error() string {
+	if e.Code != "" {
+		return fmt.Sprintf("API error [%s] (HTTP %d): %s", e.Code, e.StatusCode, e.Message)
+	}
+	return fmt.Sprintf("API error (HTTP %d): %s", e.StatusCode, e.Message)
+}
+
+func (e *APIError) IsNotFound() bool {
+	return e.StatusCode == 404 || e.Code == "NO_SUCH_NOTE" || e.Code == "NO_SUCH_FILE"
+}
+
+func (e *APIError) IsAuthError() bool {
+	return e.StatusCode == 401 || e.StatusCode == 403
+}
+
+func (e *APIError) IsRateLimit() bool {
+	return e.StatusCode == 429
+}
 
 type MisskeyClient struct {
 	Token    string
@@ -21,21 +44,31 @@ type MisskeyClient struct {
 	HTTP     *http.Client
 }
 
-func NewMisskeyClient() (*MisskeyClient, error) {
-	_ = godotenv.Load()
-
-	token := os.Getenv("TOKEN")
-	host := os.Getenv("HOST")
+func NewMisskeyClient(token, host string) (*MisskeyClient, error) {
 	if token == "" || host == "" {
-		return nil, fmt.Errorf("TOKEN or HOST not set in .env")
+		return nil, fmt.Errorf("TOKEN or HOST not set")
 	}
+
+	host = strings.TrimPrefix(host, "https://")
+	host = strings.TrimPrefix(host, "http://")
 
 	return &MisskeyClient{
 		Token:    token,
 		Host:     host,
 		Endpoint: fmt.Sprintf("https://%s/api/", host),
-		HTTP:     &http.Client{},
+		HTTP: &http.Client{
+			Timeout: 30 * time.Second,
+		},
 	}, nil
+}
+
+type apiErrorResponse struct {
+	Error apiErrorDetail `json:"error"`
+}
+
+type apiErrorDetail struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 func (c *MisskeyClient) post(api string, args map[string]interface{}, result interface{}) error {
@@ -54,10 +87,18 @@ func (c *MisskeyClient) post(api string, args map[string]interface{}, result int
 	if resp.StatusCode >= 400 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		bodyText := strings.TrimSpace(string(bodyBytes))
-		if bodyText == "" {
-			return fmt.Errorf("HTTP %d returned from %s", resp.StatusCode, api)
+
+		apiErr := &APIError{StatusCode: resp.StatusCode}
+
+		var errResp apiErrorResponse
+		if json.Unmarshal(bodyBytes, &errResp) == nil && errResp.Error.Code != "" {
+			apiErr.Code = errResp.Error.Code
+			apiErr.Message = errResp.Error.Message
+		} else if bodyText != "" {
+			apiErr.Message = bodyText
 		}
-		return fmt.Errorf("HTTP %d returned from %s: %s", resp.StatusCode, api, bodyText)
+
+		return apiErr
 	}
 
 	if result != nil {

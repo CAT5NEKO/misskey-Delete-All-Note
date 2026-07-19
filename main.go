@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"log"
 	"misskeyNotedel/internal/application/usecase"
+	"misskeyNotedel/internal/config"
 	"misskeyNotedel/internal/domain/model"
 	"misskeyNotedel/internal/infrastructure/misskey"
-	"os"
-	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -29,50 +28,40 @@ func (l *consoleLogger) Error(message string, err error) {
 func main() {
 	_ = godotenv.Load()
 
-	deleteInterval := getEnvInt("DELETE_INTERVAL", 30)
-	deleteOlderThanDays := getEnvInt("DELETE_OLDER_THAN_DAYS", 0)
-	keepReactions := getEnvBool("KEEP_WITH_REACTIONS", false)
-	keepRenotes := getEnvBool("KEEP_WITH_RENOTES", false)
-	deleteDriveFiles := getEnvBool("DELETE_DRIVE_FILES", false)
-	deleteDriveUnusedOnly := getEnvBool("DELETE_DRIVE_UNUSED_ONLY", false)
-	deleteDriveOnly := getEnvBool("DELETE_DRIVE_ONLY", false)
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Configuration error: %v", err)
+	}
 
-	client, err := misskey.NewMisskeyClient()
+	client, err := misskey.NewMisskeyClient(cfg.Token, cfg.Host)
 	if err != nil {
 		log.Fatalf("Failed to initialize client: %v", err)
 	}
 
-	config := model.NewAppConfig(deleteInterval, deleteOlderThanDays, keepReactions, keepRenotes, deleteDriveFiles, deleteDriveUnusedOnly, deleteDriveOnly)
+	appCfg := &model.AppConfig{
+		DeleteInterval:    cfg.DeleteInterval,
+		NoteOlderThan:     cfg.NoteOlderThan,
+		KeepWithReactions: cfg.KeepWithReactions,
+		KeepWithRenotes:   cfg.KeepWithRenotes,
+		KeepConditionMode: cfg.KeepConditionMode,
+		DriveOlderThan:    cfg.DriveOlderThan,
+		DriveMode:         cfg.DriveMode,
+		SkipNotes:         cfg.SkipNotes,
+		DryRun:            cfg.DryRun,
+		Yes:               cfg.Yes,
+		MaxDelete:         cfg.MaxDelete,
+		Force:             cfg.Force,
+		Verbose:           cfg.Verbose,
+		Quiet:             cfg.Quiet,
+		LockFile:          cfg.LockFile,
+	}
+
 	logger := &consoleLogger{}
-	deleteUseCase := usecase.NewDeleteNotesUseCase(client, config, logger)
+	deleteUseCase := usecase.NewDeleteNotesUseCase(client, appCfg, logger)
 
 	if err := deleteUseCase.Execute(); err != nil {
 		log.Fatalf("Execution failed: %v", err)
 	}
 
 	fmt.Println("Process completed.")
-}
-
-func getEnvInt(key string, defaultValue int) int {
-	valueStr := os.Getenv(key)
-	if valueStr == "" {
-		return defaultValue
-	}
-	value, err := strconv.Atoi(valueStr)
-	if err != nil {
-		return defaultValue
-	}
-	return value
-}
-
-func getEnvBool(key string, defaultValue bool) bool {
-	valueStr := os.Getenv(key)
-	if valueStr == "" {
-		return defaultValue
-	}
-	value, err := strconv.ParseBool(valueStr)
-	if err != nil {
-		return defaultValue
-	}
-	return value
 }
