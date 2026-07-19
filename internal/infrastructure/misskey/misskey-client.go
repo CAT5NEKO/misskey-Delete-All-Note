@@ -44,7 +44,7 @@ type MisskeyClient struct {
 	HTTP     *http.Client
 }
 
-func NewMisskeyClient(token, host string) (*MisskeyClient, error) {
+func NewMisskeyClient(token, host, scheme string) (*MisskeyClient, error) {
 	if token == "" || host == "" {
 		return nil, fmt.Errorf("TOKEN or HOST not set")
 	}
@@ -55,7 +55,7 @@ func NewMisskeyClient(token, host string) (*MisskeyClient, error) {
 	return &MisskeyClient{
 		Token:    token,
 		Host:     host,
-		Endpoint: fmt.Sprintf("https://%s/api/", host),
+		Endpoint: fmt.Sprintf("%s://%s/api/", scheme, host),
 		HTTP: &http.Client{
 			Timeout: 30 * time.Second,
 		},

@@ -100,6 +100,44 @@ func TestLoad_HostStripProtocol(t *testing.T) {
 	if cfg.Host != "misskey.example.com" {
 		t.Errorf("expected host without protocol, got %q", cfg.Host)
 	}
+	if cfg.Scheme != "https" {
+		t.Errorf("expected scheme https, got %q", cfg.Scheme)
+	}
+}
+
+func TestLoad_HttpScheme(t *testing.T) {
+	os.Setenv("TOKEN", "test-token")
+	os.Setenv("HOST", "http://localhost:3000")
+	defer os.Unsetenv("TOKEN")
+	defer os.Unsetenv("HOST")
+	os.Args = []string{"test"}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Host != "localhost:3000" {
+		t.Errorf("expected localhost:3000, got %q", cfg.Host)
+	}
+	if cfg.Scheme != "http" {
+		t.Errorf("expected scheme http, got %q", cfg.Scheme)
+	}
+}
+
+func TestLoad_DefaultSchemeIsHttps(t *testing.T) {
+	os.Setenv("TOKEN", "test-token")
+	os.Setenv("HOST", "misskey.example.com")
+	defer os.Unsetenv("TOKEN")
+	defer os.Unsetenv("HOST")
+	os.Args = []string{"test"}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Scheme != "https" {
+		t.Errorf("expected default scheme https, got %q", cfg.Scheme)
+	}
 }
 
 func TestLoad_Defaults(t *testing.T) {

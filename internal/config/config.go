@@ -13,8 +13,9 @@ import (
 )
 
 type Config struct {
-	Token string
-	Host  string
+	Token  string
+	Host   string
+	Scheme string
 
 	DeleteInterval int
 
@@ -142,8 +143,13 @@ func (r *rawConfig) toConfig() (*Config, error) {
 		return nil, errors.New("TOKEN and HOST are required (set via --token/--host or environment variables)")
 	}
 
-	r.host = strings.TrimPrefix(r.host, "https://")
-	r.host = strings.TrimPrefix(r.host, "http://")
+	scheme := "https"
+	if strings.HasPrefix(r.host, "http://") {
+		scheme = "http"
+		r.host = strings.TrimPrefix(r.host, "http://")
+	} else {
+		r.host = strings.TrimPrefix(r.host, "https://")
+	}
 	if r.host == "" {
 		return nil, errors.New("invalid HOST")
 	}
@@ -186,6 +192,7 @@ func (r *rawConfig) toConfig() (*Config, error) {
 	return &Config{
 		Token:              r.token,
 		Host:               r.host,
+		Scheme:             scheme,
 		DeleteInterval:     interval,
 		NoteOlderThan:      noteOlderThan,
 		KeepWithReactions:  parseBoolOr(r.keepReactions, false),

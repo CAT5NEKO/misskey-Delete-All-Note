@@ -33,7 +33,7 @@ func main() {
 		log.Fatalf("Configuration error: %v", err)
 	}
 
-	client, err := misskey.NewMisskeyClient(cfg.Token, cfg.Host)
+	client, err := misskey.NewMisskeyClient(cfg.Token, cfg.Host, cfg.Scheme)
 	if err != nil {
 		log.Fatalf("Failed to initialize client: %v", err)
 	}
