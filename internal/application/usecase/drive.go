@@ -77,7 +77,7 @@ func (i *deleteNotesInteractor) executeDriveDeletions(user *model.User, targets 
 	protected := i.protectedDriveFileIDs(user)
 
 	total := len(targets)
-	i.log.Info(fmt.Sprintf("Starting drive deletion: %d targets", total))
+	i.logInfo(fmt.Sprintf("Starting drive deletion: %d targets", total))
 
 	deleted := 0
 	for idx, file := range targets {
@@ -89,9 +89,7 @@ func (i *deleteNotesInteractor) executeDriveDeletions(user *model.User, targets 
 		num := idx + 1
 
 		if _, ok := protected[file.ID]; ok {
-			if i.config.Verbose {
-				i.log.Info(fmt.Sprintf("[%d/%d] Skipped profile file: %s", num, total, file.ID))
-			}
+			i.logInfo(fmt.Sprintf("[%d/%d] Skipped profile file: %s", num, total, file.ID))
 			i.sleepBetweenDeletions()
 			continue
 		}
@@ -129,6 +127,7 @@ func (i *deleteNotesInteractor) executeDriveDeletions(user *model.User, targets 
 			if isRateLimitError(err) {
 				i.log.Warn(fmt.Sprintf("[%d/%d] Rate limited. Backing off for 60s before retry.", num, total))
 				time.Sleep(60 * time.Second)
+				continue
 			}
 			i.log.Error(fmt.Sprintf("[%d/%d] Error deleting drive file %s (%s)", num, total, file.ID, file.Name), err)
 			i.sleepOnError()
@@ -136,11 +135,11 @@ func (i *deleteNotesInteractor) executeDriveDeletions(user *model.User, targets 
 		}
 
 		deleted++
-		i.log.Info(fmt.Sprintf("[%d/%d] Deleted drive file: %s", num, total, file.Name))
+		i.logInfo(fmt.Sprintf("[%d/%d] Deleted drive file: %s", num, total, file.Name))
 		i.sleepBetweenDeletions()
 	}
 
-	i.log.Info(fmt.Sprintf("Drive deletion done. Deleted: %d / Scanned: %d", deleted, total))
+	i.logInfo(fmt.Sprintf("Drive deletion done. Deleted: %d / Scanned: %d", deleted, total))
 }
 
 func (i *deleteNotesInteractor) protectedDriveFileIDs(user *model.User) map[model.DriveFileID]struct{} {

@@ -46,7 +46,7 @@ func (i *deleteNotesInteractor) executeNoteDeletions(user *model.User, targets [
 	i.unpinDeletableNotes(user, targets)
 
 	total := len(targets)
-	i.log.Info(fmt.Sprintf("Starting note deletion: %d targets", total))
+	i.logInfo(fmt.Sprintf("Starting note deletion: %d targets", total))
 
 	deleted := 0
 	for idx, note := range targets {
@@ -69,6 +69,7 @@ func (i *deleteNotesInteractor) executeNoteDeletions(user *model.User, targets [
 			if isRateLimitError(err) {
 				i.log.Warn(fmt.Sprintf("[%d/%d] Rate limited. Backing off for 60s before retry.", num, total))
 				time.Sleep(60 * time.Second)
+				continue
 			}
 			if note.IsRenote() && isNonPublicRenoteError(err) {
 				i.log.Warn(fmt.Sprintf("[%d/%d] Skipped renote %s (non-public origin)", num, total, note.ID))
@@ -81,11 +82,11 @@ func (i *deleteNotesInteractor) executeNoteDeletions(user *model.User, targets [
 		}
 
 		deleted++
-		i.log.Info(fmt.Sprintf("[%d/%d] Deleted: %s", num, total, note.GetSummary()))
+		i.logInfo(fmt.Sprintf("[%d/%d] Deleted: %s", num, total, note.GetSummary()))
 		i.sleepBetweenDeletions()
 	}
 
-	i.log.Info(fmt.Sprintf("Note deletion done. Deleted: %d / Scanned: %d", deleted, total))
+	i.logInfo(fmt.Sprintf("Note deletion done. Deleted: %d / Scanned: %d", deleted, total))
 }
 
 func (i *deleteNotesInteractor) unpinDeletableNotes(user *model.User, targets []model.Note) {
@@ -105,7 +106,7 @@ func (i *deleteNotesInteractor) unpinDeletableNotes(user *model.User, targets []
 		if err := i.repo.UnpinNote(pinned.ID); err != nil {
 			i.log.Error(fmt.Sprintf("Failed to unpin note %s", pinned.ID), err)
 		} else {
-			i.log.Info(fmt.Sprintf("Unpinned note: %s", pinned.ID))
+			i.logInfo(fmt.Sprintf("Unpinned note: %s", pinned.ID))
 		}
 	}
 }

@@ -42,7 +42,7 @@ func (i *deleteNotesInteractor) Execute() error {
 		return fmt.Errorf("failed to fetch user: %w", err)
 	}
 
-	i.log.Info(fmt.Sprintf("Target User: %s @%s (%d Total Notes)", user.Name, user.Username, user.NotesCount))
+	i.logInfo(fmt.Sprintf("Target User: %s @%s (%d Total Notes)", user.Name, user.Username, user.NotesCount))
 
 	i.logAgeFilters()
 
@@ -66,7 +66,7 @@ func (i *deleteNotesInteractor) Execute() error {
 			i.log.Error("Failed to scan notes", err)
 		}
 	} else {
-		i.log.Info("SkipNotes enabled: skipping note deletion")
+		i.logInfo("SkipNotes enabled: skipping note deletion")
 	}
 
 	if doDrive {
@@ -85,12 +85,12 @@ func (i *deleteNotesInteractor) Execute() error {
 	}
 
 	if len(noteTargets) == 0 && len(driveTargets) == 0 {
-		i.log.Info("No deletion targets found.")
+		i.logInfo("No deletion targets found.")
 		return nil
 	}
 
 	if !i.config.Yes && !i.confirm(len(noteTargets), len(driveTargets)) {
-		i.log.Info("Cancelled.")
+		i.logInfo("Cancelled.")
 		return nil
 	}
 
@@ -102,20 +102,19 @@ func (i *deleteNotesInteractor) Execute() error {
 		i.executeDriveDeletions(user, driveTargets)
 	}
 
-	i.log.Info("Process completed.")
+	i.logInfo("Process completed.")
 	return nil
 }
 
 func (i *deleteNotesInteractor) logAgeFilters() {
 	if i.config.NoteOlderThan > 0 {
-		i.log.Info(fmt.Sprintf("Note age filter: older than %s", i.config.NoteOlderThan))
+		i.logInfo(fmt.Sprintf("Note age filter: older than %s", i.config.NoteOlderThan))
 	}
 	if i.config.DriveOlderThan > 0 {
-		i.log.Info(fmt.Sprintf("Drive age filter: older than %s", i.config.DriveOlderThan))
+		i.logInfo(fmt.Sprintf("Drive age filter: older than %s", i.config.DriveOlderThan))
 	}
-	keep := i.buildKeepSummary()
-	if keep != "" {
-		i.log.Info(fmt.Sprintf("Keep condition: %s", keep))
+	if keep := i.buildKeepSummary(); keep != "" {
+		i.logInfo(fmt.Sprintf("Keep condition: %s", keep))
 	}
 }
 
@@ -168,4 +167,11 @@ func (i *deleteNotesInteractor) sleepBetweenDeletions() {
 func (i *deleteNotesInteractor) sleepOnError() {
 	i.log.Warn("Sleeping 15 minutes due to unexpected error...")
 	time.Sleep(15 * time.Minute)
+}
+
+func (i *deleteNotesInteractor) logInfo(msg string) {
+	if i.config.Quiet {
+		return
+	}
+	i.log.Info(msg)
 }
