@@ -35,3 +35,11 @@ func isRateLimitError(err error) bool {
 	}
 	return strings.Contains(err.Error(), "(HTTP 429)")
 }
+
+func isServerError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "(HTTP 5")
+}

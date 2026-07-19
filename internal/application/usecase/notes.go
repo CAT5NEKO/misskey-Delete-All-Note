@@ -67,8 +67,8 @@ func (i *deleteNotesInteractor) executeNoteDeletions(user *model.User, targets [
 				return
 			}
 			if isRateLimitError(err) {
-				i.log.Warn(fmt.Sprintf("[%d/%d] Rate limited. Backing off for 60s before retry.", num, total))
-				time.Sleep(60 * time.Second)
+				i.log.Warn(fmt.Sprintf("[%d/%d] Rate limited. Waiting 15 minutes before retry.", num, total))
+				time.Sleep(errSleepDuration)
 				continue
 			}
 			if note.IsRenote() && isNonPublicRenoteError(err) {
@@ -76,8 +76,13 @@ func (i *deleteNotesInteractor) executeNoteDeletions(user *model.User, targets [
 				i.sleepBetweenDeletions()
 				continue
 			}
+			if isServerError(err) {
+				i.log.Error(fmt.Sprintf("[%d/%d] Failed to delete note %s (%s)", num, total, note.ID, note.KindLabel()), err)
+				i.sleepOnError()
+				continue
+			}
 			i.log.Error(fmt.Sprintf("[%d/%d] Failed to delete note %s (%s)", num, total, note.ID, note.KindLabel()), err)
-			i.sleepOnError()
+			i.sleepBetweenDeletions()
 			continue
 		}
 

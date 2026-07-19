@@ -52,6 +52,13 @@ func withNoteOlderThan(d time.Duration) func(*model.AppConfig) {
 	return func(c *model.AppConfig) { c.NoteOlderThan = d }
 }
 
+func withNoErrorSleep(t *testing.T) {
+	t.Helper()
+	old := errSleepDuration
+	errSleepDuration = 0
+	t.Cleanup(func() { errSleepDuration = old })
+}
+
 type mockRepository struct {
 	fetchUserFunc                 func() (*model.User, error)
 	fetchNotesFunc                func(userID model.UserID, untilID model.NoteID, opts repository.FetchNotesOptions) ([]model.Note, error)
@@ -697,5 +704,149 @@ func TestExecute_DriveDeletion_SkipProfileBeforeAttachmentCheck(t *testing.T) {
 	}
 	if attachmentChecks != 2 {
 		t.Errorf("Expected 2 attachment checks (non-profile files only), got %d", attachmentChecks)
+	}
+}
+
+func TestExecute_DriveDeletion_AttachmentCheck_NotFound(t *testing.T) {
+	withNoErrorSleep(t)
+	now := time.Now()
+	deleteCalls := 0
+	repo := &mockRepository{
+		fetchUserFunc: func() (*model.User, error) {
+			return &model.User{ID: "u1"}, nil
+		},
+		fetchNotesFunc: func(_ model.UserID, _ model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
+			return []model.Note{}, nil
+		},
+		fetchDriveFilesFunc: func(_ *model.DriveFolderID, until model.DriveFileID) ([]model.DriveFile, error) {
+			if until == "" {
+				return []model.DriveFile{{ID: "f1", Name: "gone.png", CreatedAt: now.Add(-48 * time.Hour)}}, nil
+			}
+			return []model.DriveFile{}, nil
+		},
+		driveFileHasAttachedNotesFunc: func(id model.DriveFileID) (bool, error) {
+			return false, errors.New("API error [NO_SUCH_FILE] (HTTP 400): No such file.")
+		},
+		deleteDriveFileFunc: func(id model.DriveFileID) error {
+			deleteCalls++
+			return nil
+		},
+	}
+	logger := &mockLogger{}
+	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveMode("unused")), logger)
+
+	if err := uc.Execute(); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if deleteCalls != 0 {
+		t.Errorf("Expected 0 delete calls after not-found attachment check, got %d", deleteCalls)
+	}
+	if !containsMsg(logger.warnMsgs, "already gone") {
+		t.Error("Expected warning for already gone file in attachment check")
+	}
+	if containsMsg(logger.warnMsgs, "Sleeping 15 minutes") {
+		t.Error("Should NOT have slept 15 minutes for not-found attachment check")
+	}
+}
+
+func TestExecute_DriveDeletion_AttachmentCheck_ServerError(t *testing.T) {
+	withNoErrorSleep(t)
+	now := time.Now()
+	deleteCalls := 0
+	repo := &mockRepository{
+		fetchUserFunc: func() (*model.User, error) {
+			return &model.User{ID: "u1"}, nil
+		},
+		fetchNotesFunc: func(_ model.UserID, _ model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
+			return []model.Note{}, nil
+		},
+		fetchDriveFilesFunc: func(_ *model.DriveFolderID, until model.DriveFileID) ([]model.DriveFile, error) {
+			if until == "" {
+				return []model.DriveFile{{ID: "f1", Name: "server-error.png", CreatedAt: now.Add(-48 * time.Hour)}}, nil
+			}
+			return []model.DriveFile{}, nil
+		},
+		driveFileHasAttachedNotesFunc: func(id model.DriveFileID) (bool, error) {
+			return false, errors.New("API error [] (HTTP 502): bad gateway")
+		},
+		deleteDriveFileFunc: func(id model.DriveFileID) error {
+			deleteCalls++
+			return nil
+		},
+	}
+	logger := &mockLogger{}
+	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveMode("unused")), logger)
+
+	if err := uc.Execute(); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if deleteCalls != 0 {
+		t.Errorf("Expected 0 delete calls after server-error attachment check, got %d", deleteCalls)
+	}
+	if !containsMsg(logger.warnMsgs, "Sleeping 15 minutes") {
+		t.Error("Expected 15min sleep for 5xx server error in attachment check")
+	}
+}
+
+func TestExecute_NoteDeletion_ServerError(t *testing.T) {
+	withNoErrorSleep(t)
+	deleteCalls := 0
+	repo := &mockRepository{
+		fetchUserFunc: func() (*model.User, error) {
+			return &model.User{ID: "u1", NotesCount: 1}, nil
+		},
+		fetchNotesFunc: func(_ model.UserID, until model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
+			if until == "" {
+				return []model.Note{{ID: "n1"}}, nil
+			}
+			return []model.Note{}, nil
+		},
+		deleteNoteFunc: func(id model.NoteID) error {
+			deleteCalls++
+			return errors.New("API error [] (HTTP 503): service unavailable")
+		},
+	}
+	logger := &mockLogger{}
+	uc := NewDeleteNotesUseCase(repo, testConfig(), logger)
+
+	if err := uc.Execute(); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if deleteCalls != 1 {
+		t.Errorf("Expected 1 delete attempt, got %d", deleteCalls)
+	}
+	if !containsMsg(logger.warnMsgs, "Sleeping 15 minutes") {
+		t.Error("Expected 15min sleep for 5xx server error on note deletion")
+	}
+}
+
+func TestExecute_NoteDeletion_ClientError(t *testing.T) {
+	deleteCalls := 0
+	repo := &mockRepository{
+		fetchUserFunc: func() (*model.User, error) {
+			return &model.User{ID: "u1", NotesCount: 1}, nil
+		},
+		fetchNotesFunc: func(_ model.UserID, until model.NoteID, _ repository.FetchNotesOptions) ([]model.Note, error) {
+			if until == "" {
+				return []model.Note{{ID: "n1"}}, nil
+			}
+			return []model.Note{}, nil
+		},
+		deleteNoteFunc: func(id model.NoteID) error {
+			deleteCalls++
+			return errors.New("API error [] (HTTP 400): bad request")
+		},
+	}
+	logger := &mockLogger{}
+	uc := NewDeleteNotesUseCase(repo, testConfig(), logger)
+
+	if err := uc.Execute(); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if deleteCalls != 1 {
+		t.Errorf("Expected 1 delete attempt, got %d", deleteCalls)
+	}
+	if containsMsg(logger.warnMsgs, "Sleeping 15 minutes") {
+		t.Error("Should NOT sleep 15min for 4xx client error")
 	}
 }

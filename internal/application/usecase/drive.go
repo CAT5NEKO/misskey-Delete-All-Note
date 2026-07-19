@@ -101,8 +101,23 @@ func (i *deleteNotesInteractor) executeDriveDeletions(user *model.User, targets 
 					i.log.Error(fmt.Sprintf("[%d/%d] Auth error checking file %s, stopping", num, total, file.ID), err)
 					return
 				}
+				if isNotFoundError(err) {
+					i.log.Warn(fmt.Sprintf("[%d/%d] Drive file already gone, skipping: %s", num, total, file.ID))
+					i.sleepBetweenDeletions()
+					continue
+				}
+				if isRateLimitError(err) {
+					i.log.Warn(fmt.Sprintf("[%d/%d] Rate limited. Waiting 15 minutes before retry.", num, total))
+					time.Sleep(errSleepDuration)
+					continue
+				}
+				if isServerError(err) {
+					i.log.Error(fmt.Sprintf("[%d/%d] Error checking attachments for drive file %s", num, total, file.ID), err)
+					i.sleepOnError()
+					continue
+				}
 				i.log.Error(fmt.Sprintf("[%d/%d] Error checking attachments for drive file %s", num, total, file.ID), err)
-				i.sleepOnError()
+				i.sleepBetweenDeletions()
 				continue
 			}
 			if attached {
@@ -125,12 +140,17 @@ func (i *deleteNotesInteractor) executeDriveDeletions(user *model.User, targets 
 				return
 			}
 			if isRateLimitError(err) {
-				i.log.Warn(fmt.Sprintf("[%d/%d] Rate limited. Backing off for 60s before retry.", num, total))
-				time.Sleep(60 * time.Second)
+				i.log.Warn(fmt.Sprintf("[%d/%d] Rate limited. Waiting 15 minutes before retry.", num, total))
+				time.Sleep(errSleepDuration)
+				continue
+			}
+			if isServerError(err) {
+				i.log.Error(fmt.Sprintf("[%d/%d] Error deleting drive file %s (%s)", num, total, file.ID, file.Name), err)
+				i.sleepOnError()
 				continue
 			}
 			i.log.Error(fmt.Sprintf("[%d/%d] Error deleting drive file %s (%s)", num, total, file.ID, file.Name), err)
-			i.sleepOnError()
+			i.sleepBetweenDeletions()
 			continue
 		}
 

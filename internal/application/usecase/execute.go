@@ -166,8 +166,10 @@ func (i *deleteNotesInteractor) sleepBetweenDeletions() {
 
 func (i *deleteNotesInteractor) sleepOnError() {
 	i.log.Warn("Sleeping 15 minutes due to unexpected error...")
-	time.Sleep(15 * time.Minute)
+	time.Sleep(errSleepDuration)
 }
+
+var errSleepDuration = 15 * time.Minute
 
 func (i *deleteNotesInteractor) logInfo(msg string) {
 	if i.config.Quiet {

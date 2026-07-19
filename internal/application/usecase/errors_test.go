@@ -86,3 +86,29 @@ func TestIsRateLimitError(t *testing.T) {
 		})
 	}
 }
+
+func TestIsServerError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"HTTP 500", errors.New("API error [] (HTTP 500): internal server error"), true},
+		{"HTTP 501", errors.New("API error [] (HTTP 501): not implemented"), true},
+		{"HTTP 502", errors.New("API error [] (HTTP 502): bad gateway"), true},
+		{"HTTP 503", errors.New("API error [] (HTTP 503): service unavailable"), true},
+		{"HTTP 400", errors.New("API error [] (HTTP 400): bad request"), false},
+		{"HTTP 404", errors.New("API error [] (HTTP 404): not found"), false},
+		{"HTTP 429", errors.New("API error [] (HTTP 429): rate limited"), false},
+		{"network error", errors.New("dial tcp: connection refused"), false},
+		{"timeout", errors.New("context deadline exceeded"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isServerError(tt.err); got != tt.want {
+				t.Errorf("isServerError() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
