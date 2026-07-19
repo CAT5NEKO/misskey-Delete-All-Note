@@ -99,7 +99,7 @@ func Load() (*Config, error) {
 	raw.verbose = envBool("VERBOSE")
 	raw.quiet = envBool("QUIET")
 
-	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	registerFlags(fs, &raw)
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, err
