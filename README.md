@@ -15,8 +15,8 @@ Misskeyのノートとドライブファイルを一括削除するCLIツール�
 
 | フラグ | 説明 | デフォルト |
 |---|---|---|
-| `--token` | Misskey APIトークン | (必須) |
-| `--host` | Misskeyホスト名 | (必須) |
+| `--api-token` | Misskey APIトークン | (必須) |
+| `--instance-host` | Misskeyインスタンスのホスト名 | (必須) |
 | ノート削除 |||
 | `--note-older-than` | 指定期間より古いノートのみ削除 (`7d` `12h` `30m` 等) | 無効 |
 | `--keep-with-reactions` | リアクション付きノートを保持 (`true/false`) | `false` |
@@ -24,32 +24,32 @@ Misskeyのノートとドライブファイルを一括削除するCLIツール�
 | `--keep-condition-mode` | 保持判定モード: `or` または `and` | `or` |
 | ドライブ削除 |||
 | `--drive-older-than` | 指定期間より古いファイルのみ削除 | 無効 |
-| `--drive-mode` | `none`(削除なし) / `all`(全削除) / `unused`(未使用のみ) | `none` |
-| `--skip-notes` | ノート削除をスキップしドライブのみ処理 (`true/false`) | `false` |
+| `--drive-delete-mode` | `none`(削除なし) / `all`(全削除) / `unused`(未使用のみ) | `none` |
+| `--skip-note-deletion` | ノート削除をスキップしドライブのみ処理 (`true/false`) | `false` |
 | セーフガード |||
 | `--dry-run` | 削除対象の表示のみ（削除しない） | `false` |
-| `--yes` | 確認プロンプトをスキップ | `false` |
-| `--max-delete` | N件削除で自動停止（`0`=無制限） | `0` |
-| `--force` | 既存ロックファイルを無視 | `false` |
-| `--delete-interval` | 削除間隔（秒、最小値5） | `30` |
+| `--assume-yes` | 確認プロンプトをスキップ | `false` |
+| `--max-delete-count` | N件削除で自動停止（`0`=無制限） | `0` |
+| `--force-unlock` | 既存ロックファイルを無視 | `false` |
+| `--delete-interval-seconds` | 削除間隔（秒、最小値5） | `30` |
 | ログ |||
 | `--verbose` / `-v` | スキップ理由も表示 | `false` |
 | `--quiet` / `-q` | エラーのみ表示 | `false` |
 
-上記フラグはすべて同名の環境変数（例: `KEEP_WITH_REACTIONS=true`）でも設定可能です。
+上記フラグはすべて対応する環境変数（例: `KEEP_WITH_REACTIONS=true`）でも設定可能です。
 詳細は `.env.sample` を参照してください。
 
 ## 使用例
 
 ```bash
 # 30分以上前のノートを全削除（リアクション付きは残す）
-./misskeyNotedel --note-older-than=30m --keep-with-reactions=true --yes
+./misskeyNotedel --note-older-than=30m --keep-with-reactions=true --assume-yes
 
 # ドライランモードで対象確認
-./misskeyNotedel --note-older-than=7d --drive-mode=all --dry-run
+./misskeyNotedel --note-older-than=7d --drive-delete-mode=all --dry-run
 
 # ドライブのみ未使用ファイルを削除（ノートはそのまま）
-./misskeyNotedel --skip-notes=true --drive-mode=unused --yes
+./misskeyNotedel --skip-note-deletion=true --drive-delete-mode=unused --assume-yes
 ```
 
 ## 保護対象

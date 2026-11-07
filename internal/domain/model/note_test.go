@@ -154,12 +154,12 @@ func TestNote_ShouldKeep(t *testing.T) {
 }
 
 func TestAppConfig_IsSafeInterval(t *testing.T) {
-	c1 := AppConfig{DeleteInterval: 10}
+	c1 := AppConfig{DeleteIntervalSeconds: 10}
 	if !c1.IsSafeInterval() {
 		t.Error("10 should be safe")
 	}
 
-	c2 := AppConfig{DeleteInterval: 9}
+	c2 := AppConfig{DeleteIntervalSeconds: 9}
 	if c2.IsSafeInterval() {
 		t.Error("9 should not be safe")
 	}

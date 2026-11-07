@@ -50,8 +50,8 @@ func (i *deleteNotesInteractor) executeNoteDeletions(user *model.User, targets [
 
 	deleted := 0
 	for idx, note := range targets {
-		if i.config.MaxDelete > 0 && deleted >= i.config.MaxDelete {
-			i.log.Warn(fmt.Sprintf("Reached max-delete limit (%d). Stopping note deletion.", i.config.MaxDelete))
+		if i.config.MaxDeleteCount > 0 && deleted >= i.config.MaxDeleteCount {
+			i.log.Warn(fmt.Sprintf("Reached max-delete-count limit (%d). Stopping note deletion.", i.config.MaxDeleteCount))
 			break
 		}
 

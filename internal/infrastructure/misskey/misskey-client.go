@@ -46,7 +46,7 @@ type MisskeyClient struct {
 
 func NewMisskeyClient(token, host, scheme string) (*MisskeyClient, error) {
 	if token == "" || host == "" {
-		return nil, fmt.Errorf("TOKEN or HOST not set")
+		return nil, fmt.Errorf("API_TOKEN or INSTANCE_HOST not set")
 	}
 
 	host = strings.TrimPrefix(host, "https://")

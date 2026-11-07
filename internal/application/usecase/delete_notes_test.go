@@ -16,11 +16,11 @@ var testConfig = func(overrides ...func(*model.AppConfig)) *model.AppConfig {
 	os.Remove(name)
 
 	cfg := &model.AppConfig{
-		DeleteInterval: 0,
-		LockFile:       name,
-		Force:          true,
-		Yes:            true,
-		DriveMode:      "none",
+		DeleteIntervalSeconds: 0,
+		LockFile:              name,
+		ForceUnlock:           true,
+		AssumeYes:             true,
+		DriveDeleteMode:       "none",
 	}
 	for _, o := range overrides {
 		o(cfg)
@@ -28,12 +28,12 @@ var testConfig = func(overrides ...func(*model.AppConfig)) *model.AppConfig {
 	return cfg
 }
 
-func withDriveMode(mode string) func(*model.AppConfig) {
-	return func(c *model.AppConfig) { c.DriveMode = mode }
+func withDriveDeleteMode(mode string) func(*model.AppConfig) {
+	return func(c *model.AppConfig) { c.DriveDeleteMode = mode }
 }
 
-func withSkipNotes() func(*model.AppConfig) {
-	return func(c *model.AppConfig) { c.SkipNotes = true }
+func withSkipNoteDeletion() func(*model.AppConfig) {
+	return func(c *model.AppConfig) { c.SkipNoteDeletion = true }
 }
 
 func withKeepRenotes() func(*model.AppConfig) {
@@ -44,8 +44,8 @@ func withDryRun() func(*model.AppConfig) {
 	return func(c *model.AppConfig) { c.DryRun = true }
 }
 
-func withMaxDelete(n int) func(*model.AppConfig) {
-	return func(c *model.AppConfig) { c.MaxDelete = n }
+func withMaxDeleteCount(n int) func(*model.AppConfig) {
+	return func(c *model.AppConfig) { c.MaxDeleteCount = n }
 }
 
 func withNoteOlderThan(d time.Duration) func(*model.AppConfig) {
@@ -427,7 +427,7 @@ func TestExecute_MaxDelete_Notes(t *testing.T) {
 		},
 	}
 	logger := &mockLogger{}
-	uc := NewDeleteNotesUseCase(repo, testConfig(withMaxDelete(2)), logger)
+	uc := NewDeleteNotesUseCase(repo, testConfig(withMaxDeleteCount(2)), logger)
 
 	if err := uc.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -435,8 +435,8 @@ func TestExecute_MaxDelete_Notes(t *testing.T) {
 	if deleteCount != 2 {
 		t.Errorf("Expected 2 deletes (max limit), got %d", deleteCount)
 	}
-	if !containsMsg(logger.warnMsgs, "max-delete limit") {
-		t.Error("Expected max-delete warning")
+	if !containsMsg(logger.warnMsgs, "max-delete-count limit") {
+		t.Error("Expected max-delete-count warning")
 	}
 }
 
@@ -462,7 +462,7 @@ func TestExecute_DriveDeletion_All(t *testing.T) {
 		},
 	}
 	logger := &mockLogger{}
-	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveMode("all")), logger)
+	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveDeleteMode("all")), logger)
 
 	if err := uc.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -509,7 +509,7 @@ func TestExecute_DriveDeletion_TraversesFolders(t *testing.T) {
 			return nil
 		},
 	}
-	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveMode("all")), &mockLogger{})
+	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveDeleteMode("all")), &mockLogger{})
 
 	if err := uc.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -546,7 +546,7 @@ func TestExecute_DriveDeletion_UnusedOnly(t *testing.T) {
 			return nil
 		},
 	}
-	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveMode("unused")), &mockLogger{})
+	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveDeleteMode("unused")), &mockLogger{})
 
 	if err := uc.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -580,7 +580,7 @@ func TestExecute_SkipNotesWithDrive(t *testing.T) {
 		},
 	}
 	logger := &mockLogger{}
-	cfg := testConfig(withSkipNotes(), withDriveMode("all"))
+	cfg := testConfig(withSkipNoteDeletion(), withDriveDeleteMode("all"))
 	uc := NewDeleteNotesUseCase(repo, cfg, logger)
 
 	if err := uc.Execute(); err != nil {
@@ -621,7 +621,7 @@ func TestExecute_DriveDeletion_SkipsProfileFiles(t *testing.T) {
 			return nil
 		},
 	}
-	cfg := testConfig(withDriveMode("all"), withSkipNotes())
+	cfg := testConfig(withDriveDeleteMode("all"), withSkipNoteDeletion())
 	uc := NewDeleteNotesUseCase(repo, cfg, &mockLogger{})
 
 	if err := uc.Execute(); err != nil {
@@ -654,7 +654,7 @@ func TestExecute_DriveDeletion_SkipsMissingFile(t *testing.T) {
 		},
 	}
 	logger := &mockLogger{}
-	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveMode("all")), logger)
+	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveDeleteMode("all")), logger)
 
 	if err := uc.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -696,7 +696,7 @@ func TestExecute_DriveDeletion_SkipProfileBeforeAttachmentCheck(t *testing.T) {
 			return nil
 		},
 	}
-	cfg := testConfig(withDriveMode("unused"))
+	cfg := testConfig(withDriveDeleteMode("unused"))
 	uc := NewDeleteNotesUseCase(repo, cfg, &mockLogger{})
 
 	if err := uc.Execute(); err != nil {
@@ -733,7 +733,7 @@ func TestExecute_DriveDeletion_AttachmentCheck_NotFound(t *testing.T) {
 		},
 	}
 	logger := &mockLogger{}
-	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveMode("unused")), logger)
+	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveDeleteMode("unused")), logger)
 
 	if err := uc.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -775,7 +775,7 @@ func TestExecute_DriveDeletion_AttachmentCheck_ServerError(t *testing.T) {
 		},
 	}
 	logger := &mockLogger{}
-	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveMode("unused")), logger)
+	uc := NewDeleteNotesUseCase(repo, testConfig(withDriveDeleteMode("unused")), logger)
 
 	if err := uc.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)

@@ -81,8 +81,8 @@ func (i *deleteNotesInteractor) executeDriveDeletions(user *model.User, targets 
 
 	deleted := 0
 	for idx, file := range targets {
-		if i.config.MaxDelete > 0 && deleted >= i.config.MaxDelete {
-			i.log.Warn(fmt.Sprintf("Reached max-delete limit (%d). Stopping drive deletion.", i.config.MaxDelete))
+		if i.config.MaxDeleteCount > 0 && deleted >= i.config.MaxDeleteCount {
+			i.log.Warn(fmt.Sprintf("Reached max-delete-count limit (%d). Stopping drive deletion.", i.config.MaxDeleteCount))
 			break
 		}
 
@@ -94,7 +94,7 @@ func (i *deleteNotesInteractor) executeDriveDeletions(user *model.User, targets 
 			continue
 		}
 
-		if i.config.DriveMode == "unused" {
+		if i.config.DriveDeleteMode == "unused" {
 			attached, err := i.repo.DriveFileHasAttachedNotes(file.ID)
 			if err != nil {
 				if isAuthError(err) {

@@ -24,7 +24,7 @@ func NewDeleteNotesUseCase(repo repository.MisskeyRepository, config *model.AppC
 }
 
 func (i *deleteNotesInteractor) Execute() error {
-	cleanup, err := acquireLock(i.config.LockFile, i.config.Force)
+	cleanup, err := acquireLock(i.config.LockFile, i.config.ForceUnlock)
 	if err != nil {
 		return fmt.Errorf("lock: %w", err)
 	}
@@ -46,11 +46,11 @@ func (i *deleteNotesInteractor) Execute() error {
 
 	i.logAgeFilters()
 
-	skipNotes := i.config.SkipNotes
-	doDrive := i.config.DriveMode != "" && i.config.DriveMode != "none"
+	skipNotes := i.config.SkipNoteDeletion
+	doDrive := i.config.DriveDeleteMode != "" && i.config.DriveDeleteMode != "none"
 
 	if skipNotes && !doDrive {
-		i.log.Warn("Nothing to do: SkipNotes=true and DriveMode=none.")
+		i.log.Warn("Nothing to do: SKIP_NOTE_DELETION=true and DRIVE_DELETE_MODE=none.")
 		return nil
 	}
 
@@ -66,7 +66,7 @@ func (i *deleteNotesInteractor) Execute() error {
 			i.log.Error("Failed to scan notes", err)
 		}
 	} else {
-		i.logInfo("SkipNotes enabled: skipping note deletion")
+		i.logInfo("SkipNoteDeletion enabled: skipping note deletion")
 	}
 
 	if doDrive {
@@ -89,7 +89,7 @@ func (i *deleteNotesInteractor) Execute() error {
 		return nil
 	}
 
-	if !i.config.Yes && !i.confirm(len(noteTargets), len(driveTargets)) {
+	if !i.config.AssumeYes && !i.confirm(len(noteTargets), len(driveTargets)) {
 		i.logInfo("Cancelled.")
 		return nil
 	}
@@ -161,7 +161,7 @@ func (i *deleteNotesInteractor) printDryRunSummary(notes []model.Note, files []m
 }
 
 func (i *deleteNotesInteractor) sleepBetweenDeletions() {
-	time.Sleep(time.Duration(i.config.DeleteInterval) * time.Second)
+	time.Sleep(time.Duration(i.config.DeleteIntervalSeconds) * time.Second)
 }
 
 func (i *deleteNotesInteractor) sleepOnError() {

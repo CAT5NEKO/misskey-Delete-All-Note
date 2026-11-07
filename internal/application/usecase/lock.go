@@ -9,7 +9,7 @@ import (
 	"syscall"
 )
 
-func acquireLock(path string, force bool) (func(), error) {
+func acquireLock(path string, forceUnlock bool) (func(), error) {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0600)
 	if err == nil {
 		fmt.Fprintf(f, "%d\n", os.Getpid())
@@ -20,7 +20,7 @@ func acquireLock(path string, force bool) (func(), error) {
 		return nil, err
 	}
 
-	if force || isLockStale(path) {
+	if forceUnlock || isLockStale(path) {
 		if removeErr := os.Remove(path); removeErr != nil {
 			return nil, fmt.Errorf("failed to remove stale lock file: %w", removeErr)
 		}
@@ -33,7 +33,7 @@ func acquireLock(path string, force bool) (func(), error) {
 		return func() { os.Remove(path) }, nil
 	}
 
-	return nil, fmt.Errorf("another instance is already running (use --force to override)")
+	return nil, fmt.Errorf("another instance is already running (use --force-unlock to override)")
 }
 
 func isLockStale(path string) bool {

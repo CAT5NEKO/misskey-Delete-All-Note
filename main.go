@@ -33,27 +33,27 @@ func main() {
 		log.Fatalf("Configuration error: %v", err)
 	}
 
-	client, err := misskey.NewMisskeyClient(cfg.Token, cfg.Host, cfg.Scheme)
+	client, err := misskey.NewMisskeyClient(cfg.APIToken, cfg.InstanceHost, cfg.Scheme)
 	if err != nil {
 		log.Fatalf("Failed to initialize client: %v", err)
 	}
 
 	appCfg := &model.AppConfig{
-		DeleteInterval:    cfg.DeleteInterval,
-		NoteOlderThan:     cfg.NoteOlderThan,
-		KeepWithReactions: cfg.KeepWithReactions,
-		KeepWithRenotes:   cfg.KeepWithRenotes,
-		KeepConditionMode: cfg.KeepConditionMode,
-		DriveOlderThan:    cfg.DriveOlderThan,
-		DriveMode:         cfg.DriveMode,
-		SkipNotes:         cfg.SkipNotes,
-		DryRun:            cfg.DryRun,
-		Yes:               cfg.Yes,
-		MaxDelete:         cfg.MaxDelete,
-		Force:             cfg.Force,
-		Verbose:           cfg.Verbose,
-		Quiet:             cfg.Quiet,
-		LockFile:          cfg.LockFile,
+		DeleteIntervalSeconds: cfg.DeleteIntervalSeconds,
+		NoteOlderThan:         cfg.NoteOlderThan,
+		KeepWithReactions:     cfg.KeepWithReactions,
+		KeepWithRenotes:       cfg.KeepWithRenotes,
+		KeepConditionMode:     cfg.KeepConditionMode,
+		DriveOlderThan:        cfg.DriveOlderThan,
+		DriveDeleteMode:       cfg.DriveDeleteMode,
+		SkipNoteDeletion:      cfg.SkipNoteDeletion,
+		DryRun:                cfg.DryRun,
+		AssumeYes:             cfg.AssumeYes,
+		MaxDeleteCount:        cfg.MaxDeleteCount,
+		ForceUnlock:           cfg.ForceUnlock,
+		Verbose:               cfg.Verbose,
+		Quiet:                 cfg.Quiet,
+		LockFile:              cfg.LockFile,
 	}
 
 	logger := &consoleLogger{}

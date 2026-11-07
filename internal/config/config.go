@@ -13,26 +13,26 @@ import (
 )
 
 type Config struct {
-	Token  string
-	Host   string
-	Scheme string
+	APIToken     string
+	InstanceHost string
+	Scheme       string
 
-	DeleteInterval int
+	DeleteIntervalSeconds int
 
 	NoteOlderThan     time.Duration
 	KeepWithReactions bool
 	KeepWithRenotes   bool
 	KeepConditionMode string
 
-	DriveOlderThan time.Duration
-	DriveMode      string
+	DriveOlderThan  time.Duration
+	DriveDeleteMode string
 
-	SkipNotes bool
+	SkipNoteDeletion bool
 
-	DryRun    bool
-	Yes       bool
-	MaxDelete int
-	Force     bool
+	DryRun         bool
+	AssumeYes      bool
+	MaxDeleteCount int
+	ForceUnlock    bool
 
 	Verbose bool
 	Quiet   bool
@@ -78,24 +78,24 @@ func defaultLockFilePath() string {
 
 func Load() (*Config, error) {
 	raw := rawConfig{
-		deleteInterval: envIntDefault("DELETE_INTERVAL", 30),
-		maxDelete:      envIntDefault("MAX_DELETE", 0),
-		lockFile:       envStrDefault("LOCK_FILE", defaultLockFilePath()),
+		deleteIntervalSeconds: envIntDefault("DELETE_INTERVAL_SECONDS", 30),
+		maxDeleteCount:        envIntDefault("MAX_DELETE_COUNT", 0),
+		lockFile:              envStrDefault("LOCK_FILE", defaultLockFilePath()),
 	}
 
-	readEnvString(&raw.token, "TOKEN", "")
-	readEnvString(&raw.host, "HOST", "")
+	readEnvString(&raw.apiToken, "API_TOKEN", "")
+	readEnvString(&raw.instanceHost, "INSTANCE_HOST", "")
 	readEnvString(&raw.noteOlderThan, "NOTE_OLDER_THAN", "")
 	readEnvString(&raw.keepReactions, "KEEP_WITH_REACTIONS", "false")
 	readEnvString(&raw.keepRenotes, "KEEP_WITH_RENOTES", "false")
 	readEnvString(&raw.keepMode, "KEEP_CONDITION_MODE", "or")
 	readEnvString(&raw.driveOlderThan, "DRIVE_OLDER_THAN", "")
-	readEnvString(&raw.driveMode, "DRIVE_MODE", "none")
-	readEnvString(&raw.skipNotes, "SKIP_NOTES", "false")
+	readEnvString(&raw.driveDeleteMode, "DRIVE_DELETE_MODE", "none")
+	readEnvString(&raw.skipNoteDeletion, "SKIP_NOTE_DELETION", "false")
 
 	raw.dryRun = envBool("DRY_RUN")
-	raw.yes = envBool("YES")
-	raw.force = envBool("FORCE")
+	raw.assumeYes = envBool("ASSUME_YES")
+	raw.forceUnlock = envBool("FORCE_UNLOCK")
 	raw.verbose = envBool("VERBOSE")
 	raw.quiet = envBool("QUIET")
 
@@ -109,28 +109,29 @@ func Load() (*Config, error) {
 }
 
 type rawConfig struct {
-	token, host                                       string
+	apiToken, instanceHost                              string
 	noteOlderThan, keepReactions, keepRenotes, keepMode string
-	driveOlderThan, driveMode, skipNotes, lockFile    string
-	deleteInterval, maxDelete                         int
-	dryRun, yes, force, verbose, quiet                bool
+	driveOlderThan, driveDeleteMode, skipNoteDeletion   string
+	lockFile                                            string
+	deleteIntervalSeconds, maxDeleteCount               int
+	dryRun, assumeYes, forceUnlock, verbose, quiet      bool
 }
 
 func registerFlags(fs *flag.FlagSet, r *rawConfig) {
-	fs.StringVar(&r.token, "token", r.token, "Misskey API token")
-	fs.StringVar(&r.host, "host", r.host, "Misskey host")
-	fs.IntVar(&r.deleteInterval, "delete-interval", r.deleteInterval, "Seconds between each deletion (min 5)")
+	fs.StringVar(&r.apiToken, "api-token", r.apiToken, "Misskey API token")
+	fs.StringVar(&r.instanceHost, "instance-host", r.instanceHost, "Misskey instance host")
+	fs.IntVar(&r.deleteIntervalSeconds, "delete-interval-seconds", r.deleteIntervalSeconds, "Seconds between each deletion (min 5)")
 	fs.StringVar(&r.noteOlderThan, "note-older-than", r.noteOlderThan, "Only delete notes older than this duration (e.g. 7d, 12h, 30m)")
 	fs.StringVar(&r.keepReactions, "keep-with-reactions", r.keepReactions, "Keep notes with reactions (true/false)")
 	fs.StringVar(&r.keepRenotes, "keep-with-renotes", r.keepRenotes, "Keep notes that were renoted (true/false)")
 	fs.StringVar(&r.keepMode, "keep-condition-mode", r.keepMode, "Condition mode: 'or' or 'and'")
 	fs.StringVar(&r.driveOlderThan, "drive-older-than", r.driveOlderThan, "Only delete drive files older than this (e.g. 30d, 7d12h)")
-	fs.StringVar(&r.driveMode, "drive-mode", r.driveMode, "Drive deletion mode: 'none', 'all', 'unused'")
-	fs.StringVar(&r.skipNotes, "skip-notes", r.skipNotes, "Skip note deletion, only process drive files (true/false)")
+	fs.StringVar(&r.driveDeleteMode, "drive-delete-mode", r.driveDeleteMode, "Drive deletion mode: 'none', 'all', 'unused'")
+	fs.StringVar(&r.skipNoteDeletion, "skip-note-deletion", r.skipNoteDeletion, "Skip note deletion, only process drive files (true/false)")
 	fs.BoolVar(&r.dryRun, "dry-run", r.dryRun, "Show targets without deleting")
-	fs.BoolVar(&r.yes, "yes", r.yes, "Skip confirmation prompt")
-	fs.IntVar(&r.maxDelete, "max-delete", r.maxDelete, "Stop after N deletions (0=unlimited)")
-	fs.BoolVar(&r.force, "force", r.force, "Ignore existing lock file")
+	fs.BoolVar(&r.assumeYes, "assume-yes", r.assumeYes, "Skip confirmation prompt")
+	fs.IntVar(&r.maxDeleteCount, "max-delete-count", r.maxDeleteCount, "Stop after N deletions (0=unlimited)")
+	fs.BoolVar(&r.forceUnlock, "force-unlock", r.forceUnlock, "Ignore existing lock file")
 	fs.BoolVar(&r.verbose, "verbose", r.verbose, "Verbose output (show skip reasons)")
 	fs.BoolVar(&r.verbose, "v", r.verbose, "Short for --verbose")
 	fs.BoolVar(&r.quiet, "quiet", r.quiet, "Quiet mode (errors only)")
@@ -139,19 +140,19 @@ func registerFlags(fs *flag.FlagSet, r *rawConfig) {
 }
 
 func (r *rawConfig) toConfig() (*Config, error) {
-	if r.token == "" || r.host == "" {
-		return nil, errors.New("TOKEN and HOST are required (set via --token/--host or environment variables)")
+	if r.apiToken == "" || r.instanceHost == "" {
+		return nil, errors.New("API_TOKEN and INSTANCE_HOST are required (set via --api-token/--instance-host or environment variables)")
 	}
 
 	scheme := "https"
-	if strings.HasPrefix(r.host, "http://") {
+	if strings.HasPrefix(r.instanceHost, "http://") {
 		scheme = "http"
-		r.host = strings.TrimPrefix(r.host, "http://")
+		r.instanceHost = strings.TrimPrefix(r.instanceHost, "http://")
 	} else {
-		r.host = strings.TrimPrefix(r.host, "https://")
+		r.instanceHost = strings.TrimPrefix(r.instanceHost, "https://")
 	}
-	if r.host == "" {
-		return nil, errors.New("invalid HOST")
+	if r.instanceHost == "" {
+		return nil, errors.New("invalid INSTANCE_HOST")
 	}
 
 	noteOlderThan, err := ParseDuration(r.noteOlderThan)
@@ -164,7 +165,7 @@ func (r *rawConfig) toConfig() (*Config, error) {
 		return nil, fmt.Errorf("invalid DRIVE_OLDER_THAN %q: %w", r.driveOlderThan, err)
 	}
 
-	interval := r.deleteInterval
+	interval := r.deleteIntervalSeconds
 	if interval < 5 {
 		interval = 30
 	}
@@ -174,14 +175,14 @@ func (r *rawConfig) toConfig() (*Config, error) {
 		keepMode = "or"
 	}
 
-	driveMode := strings.ToLower(strings.TrimSpace(r.driveMode))
+	driveMode := strings.ToLower(strings.TrimSpace(r.driveDeleteMode))
 	if driveMode != "none" && driveMode != "all" && driveMode != "unused" {
 		driveMode = "none"
 	}
 
-	maxDelete := r.maxDelete
-	if maxDelete < 0 {
-		maxDelete = 0
+	maxDeleteCount := r.maxDeleteCount
+	if maxDeleteCount < 0 {
+		maxDeleteCount = 0
 	}
 
 	lockFile := r.lockFile
@@ -190,24 +191,24 @@ func (r *rawConfig) toConfig() (*Config, error) {
 	}
 
 	return &Config{
-		Token:              r.token,
-		Host:               r.host,
-		Scheme:             scheme,
-		DeleteInterval:     interval,
-		NoteOlderThan:      noteOlderThan,
-		KeepWithReactions:  parseBoolOr(r.keepReactions, false),
-		KeepWithRenotes:    parseBoolOr(r.keepRenotes, false),
-		KeepConditionMode:  keepMode,
-		DriveOlderThan:     driveOlderThan,
-		DriveMode:          driveMode,
-		SkipNotes:          parseBoolOr(r.skipNotes, false),
-		DryRun:             r.dryRun,
-		Yes:                r.yes,
-		MaxDelete:          maxDelete,
-		Force:              r.force,
-		Verbose:            r.verbose,
-		Quiet:              r.quiet,
-		LockFile:           lockFile,
+		APIToken:              r.apiToken,
+		InstanceHost:          r.instanceHost,
+		Scheme:                scheme,
+		DeleteIntervalSeconds: interval,
+		NoteOlderThan:         noteOlderThan,
+		KeepWithReactions:     parseBoolOr(r.keepReactions, false),
+		KeepWithRenotes:       parseBoolOr(r.keepRenotes, false),
+		KeepConditionMode:     keepMode,
+		DriveOlderThan:        driveOlderThan,
+		DriveDeleteMode:       driveMode,
+		SkipNoteDeletion:      parseBoolOr(r.skipNoteDeletion, false),
+		DryRun:                r.dryRun,
+		AssumeYes:             r.assumeYes,
+		MaxDeleteCount:        maxDeleteCount,
+		ForceUnlock:           r.forceUnlock,
+		Verbose:               r.verbose,
+		Quiet:                 r.quiet,
+		LockFile:              lockFile,
 	}, nil
 }
 

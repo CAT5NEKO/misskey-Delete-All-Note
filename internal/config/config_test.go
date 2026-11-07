@@ -76,8 +76,8 @@ func TestParseBoolOr(t *testing.T) {
 }
 
 func TestLoad_TokenHostRequired(t *testing.T) {
-	os.Unsetenv("TOKEN")
-	os.Unsetenv("HOST")
+	os.Unsetenv("API_TOKEN")
+	os.Unsetenv("INSTANCE_HOST")
 	os.Args = []string{"test"}
 
 	_, err := Load()
@@ -87,18 +87,18 @@ func TestLoad_TokenHostRequired(t *testing.T) {
 }
 
 func TestLoad_HostStripProtocol(t *testing.T) {
-	os.Setenv("TOKEN", "test-token")
-	os.Setenv("HOST", "https://misskey.example.com")
-	defer os.Unsetenv("TOKEN")
-	defer os.Unsetenv("HOST")
+	os.Setenv("API_TOKEN", "test-token")
+	os.Setenv("INSTANCE_HOST", "https://misskey.example.com")
+	defer os.Unsetenv("API_TOKEN")
+	defer os.Unsetenv("INSTANCE_HOST")
 	os.Args = []string{"test"}
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Host != "misskey.example.com" {
-		t.Errorf("expected host without protocol, got %q", cfg.Host)
+	if cfg.InstanceHost != "misskey.example.com" {
+		t.Errorf("expected host without protocol, got %q", cfg.InstanceHost)
 	}
 	if cfg.Scheme != "https" {
 		t.Errorf("expected scheme https, got %q", cfg.Scheme)
@@ -106,18 +106,18 @@ func TestLoad_HostStripProtocol(t *testing.T) {
 }
 
 func TestLoad_HttpScheme(t *testing.T) {
-	os.Setenv("TOKEN", "test-token")
-	os.Setenv("HOST", "http://localhost:3000")
-	defer os.Unsetenv("TOKEN")
-	defer os.Unsetenv("HOST")
+	os.Setenv("API_TOKEN", "test-token")
+	os.Setenv("INSTANCE_HOST", "http://localhost:3000")
+	defer os.Unsetenv("API_TOKEN")
+	defer os.Unsetenv("INSTANCE_HOST")
 	os.Args = []string{"test"}
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Host != "localhost:3000" {
-		t.Errorf("expected localhost:3000, got %q", cfg.Host)
+	if cfg.InstanceHost != "localhost:3000" {
+		t.Errorf("expected localhost:3000, got %q", cfg.InstanceHost)
 	}
 	if cfg.Scheme != "http" {
 		t.Errorf("expected scheme http, got %q", cfg.Scheme)
@@ -125,10 +125,10 @@ func TestLoad_HttpScheme(t *testing.T) {
 }
 
 func TestLoad_DefaultSchemeIsHttps(t *testing.T) {
-	os.Setenv("TOKEN", "test-token")
-	os.Setenv("HOST", "misskey.example.com")
-	defer os.Unsetenv("TOKEN")
-	defer os.Unsetenv("HOST")
+	os.Setenv("API_TOKEN", "test-token")
+	os.Setenv("INSTANCE_HOST", "misskey.example.com")
+	defer os.Unsetenv("API_TOKEN")
+	defer os.Unsetenv("INSTANCE_HOST")
 	os.Args = []string{"test"}
 
 	cfg, err := Load()
@@ -141,53 +141,53 @@ func TestLoad_DefaultSchemeIsHttps(t *testing.T) {
 }
 
 func TestLoad_Defaults(t *testing.T) {
-	os.Setenv("TOKEN", "test-token")
-	os.Setenv("HOST", "misskey.example.com")
-	defer os.Unsetenv("TOKEN")
-	defer os.Unsetenv("HOST")
+	os.Setenv("API_TOKEN", "test-token")
+	os.Setenv("INSTANCE_HOST", "misskey.example.com")
+	defer os.Unsetenv("API_TOKEN")
+	defer os.Unsetenv("INSTANCE_HOST")
 	os.Args = []string{"test"}
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.DeleteInterval != 30 {
-		t.Errorf("default DeleteInterval = %d, want 30", cfg.DeleteInterval)
+	if cfg.DeleteIntervalSeconds != 30 {
+		t.Errorf("default DeleteIntervalSeconds = %d, want 30", cfg.DeleteIntervalSeconds)
 	}
 	if cfg.KeepConditionMode != "or" {
 		t.Errorf("default KeepConditionMode = %q, want 'or'", cfg.KeepConditionMode)
 	}
-	if cfg.DriveMode != "none" {
-		t.Errorf("default DriveMode = %q, want 'none'", cfg.DriveMode)
+	if cfg.DriveDeleteMode != "none" {
+		t.Errorf("default DriveDeleteMode = %q, want 'none'", cfg.DriveDeleteMode)
 	}
 }
 
 func TestLoad_DeleteIntervalClamped(t *testing.T) {
-	os.Setenv("TOKEN", "test-token")
-	os.Setenv("HOST", "misskey.example.com")
-	os.Setenv("DELETE_INTERVAL", "2")
-	defer os.Unsetenv("TOKEN")
-	defer os.Unsetenv("HOST")
-	defer os.Unsetenv("DELETE_INTERVAL")
+	os.Setenv("API_TOKEN", "test-token")
+	os.Setenv("INSTANCE_HOST", "misskey.example.com")
+	os.Setenv("DELETE_INTERVAL_SECONDS", "2")
+	defer os.Unsetenv("API_TOKEN")
+	defer os.Unsetenv("INSTANCE_HOST")
+	defer os.Unsetenv("DELETE_INTERVAL_SECONDS")
 	os.Args = []string{"test"}
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.DeleteInterval != 30 {
-		t.Errorf("expected interval clamped to 30, got %d", cfg.DeleteInterval)
+	if cfg.DeleteIntervalSeconds != 30 {
+		t.Errorf("expected interval clamped to 30, got %d", cfg.DeleteIntervalSeconds)
 	}
 }
 
 func TestLoad_EnvKeepConditionMode(t *testing.T) {
-	os.Setenv("TOKEN", "test-token")
-	os.Setenv("HOST", "misskey.example.com")
+	os.Setenv("API_TOKEN", "test-token")
+	os.Setenv("INSTANCE_HOST", "misskey.example.com")
 	os.Setenv("KEEP_CONDITION_MODE", "and")
 	os.Setenv("KEEP_WITH_REACTIONS", "true")
 	os.Setenv("KEEP_WITH_RENOTES", "true")
-	defer os.Unsetenv("TOKEN")
-	defer os.Unsetenv("HOST")
+	defer os.Unsetenv("API_TOKEN")
+	defer os.Unsetenv("INSTANCE_HOST")
 	defer os.Unsetenv("KEEP_CONDITION_MODE")
 	defer os.Unsetenv("KEEP_WITH_REACTIONS")
 	defer os.Unsetenv("KEEP_WITH_RENOTES")
@@ -209,11 +209,11 @@ func TestLoad_EnvKeepConditionMode(t *testing.T) {
 }
 
 func TestLoad_InvalidKeepModeDefaults(t *testing.T) {
-	os.Setenv("TOKEN", "test-token")
-	os.Setenv("HOST", "misskey.example.com")
+	os.Setenv("API_TOKEN", "test-token")
+	os.Setenv("INSTANCE_HOST", "misskey.example.com")
 	os.Setenv("KEEP_CONDITION_MODE", "invalid")
-	defer os.Unsetenv("TOKEN")
-	defer os.Unsetenv("HOST")
+	defer os.Unsetenv("API_TOKEN")
+	defer os.Unsetenv("INSTANCE_HOST")
 	defer os.Unsetenv("KEEP_CONDITION_MODE")
 	os.Args = []string{"test"}
 
@@ -227,54 +227,54 @@ func TestLoad_InvalidKeepModeDefaults(t *testing.T) {
 }
 
 func TestLoad_InvalidDriveModeDefaults(t *testing.T) {
-	os.Setenv("TOKEN", "test-token")
-	os.Setenv("HOST", "misskey.example.com")
-	os.Setenv("DRIVE_MODE", "everything")
-	defer os.Unsetenv("TOKEN")
-	defer os.Unsetenv("HOST")
-	defer os.Unsetenv("DRIVE_MODE")
+	os.Setenv("API_TOKEN", "test-token")
+	os.Setenv("INSTANCE_HOST", "misskey.example.com")
+	os.Setenv("DRIVE_DELETE_MODE", "everything")
+	defer os.Unsetenv("API_TOKEN")
+	defer os.Unsetenv("INSTANCE_HOST")
+	defer os.Unsetenv("DRIVE_DELETE_MODE")
 	os.Args = []string{"test"}
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.DriveMode != "none" {
-		t.Errorf("expected fallback to 'none', got %q", cfg.DriveMode)
+	if cfg.DriveDeleteMode != "none" {
+		t.Errorf("expected fallback to 'none', got %q", cfg.DriveDeleteMode)
 	}
 }
 
 func TestLoad_NegativeMaxDelete(t *testing.T) {
-	os.Setenv("TOKEN", "test-token")
-	os.Setenv("HOST", "misskey.example.com")
-	os.Setenv("MAX_DELETE", "-5")
-	defer os.Unsetenv("TOKEN")
-	defer os.Unsetenv("HOST")
-	defer os.Unsetenv("MAX_DELETE")
+	os.Setenv("API_TOKEN", "test-token")
+	os.Setenv("INSTANCE_HOST", "misskey.example.com")
+	os.Setenv("MAX_DELETE_COUNT", "-5")
+	defer os.Unsetenv("API_TOKEN")
+	defer os.Unsetenv("INSTANCE_HOST")
+	defer os.Unsetenv("MAX_DELETE_COUNT")
 	os.Args = []string{"test"}
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.MaxDelete != 0 {
-		t.Errorf("expected MaxDelete=0, got %d", cfg.MaxDelete)
+	if cfg.MaxDeleteCount != 0 {
+		t.Errorf("expected MaxDeleteCount=0, got %d", cfg.MaxDeleteCount)
 	}
 }
 
 func TestLoad_EnvBoolFlags(t *testing.T) {
-	os.Setenv("TOKEN", "test-token")
-	os.Setenv("HOST", "misskey.example.com")
+	os.Setenv("API_TOKEN", "test-token")
+	os.Setenv("INSTANCE_HOST", "misskey.example.com")
 	os.Setenv("DRY_RUN", "true")
-	os.Setenv("YES", "true")
-	os.Setenv("FORCE", "true")
+	os.Setenv("ASSUME_YES", "true")
+	os.Setenv("FORCE_UNLOCK", "true")
 	os.Setenv("VERBOSE", "true")
 	os.Setenv("QUIET", "1")
-	defer os.Unsetenv("TOKEN")
-	defer os.Unsetenv("HOST")
+	defer os.Unsetenv("API_TOKEN")
+	defer os.Unsetenv("INSTANCE_HOST")
 	defer os.Unsetenv("DRY_RUN")
-	defer os.Unsetenv("YES")
-	defer os.Unsetenv("FORCE")
+	defer os.Unsetenv("ASSUME_YES")
+	defer os.Unsetenv("FORCE_UNLOCK")
 	defer os.Unsetenv("VERBOSE")
 	defer os.Unsetenv("QUIET")
 	os.Args = []string{"test"}
@@ -286,11 +286,11 @@ func TestLoad_EnvBoolFlags(t *testing.T) {
 	if !cfg.DryRun {
 		t.Error("DryRun should be true from env")
 	}
-	if !cfg.Yes {
-		t.Error("Yes should be true from env")
+	if !cfg.AssumeYes {
+		t.Error("AssumeYes should be true from env")
 	}
-	if !cfg.Force {
-		t.Error("Force should be true from env")
+	if !cfg.ForceUnlock {
+		t.Error("ForceUnlock should be true from env")
 	}
 	if !cfg.Verbose {
 		t.Error("Verbose should be true from env")
@@ -301,11 +301,11 @@ func TestLoad_EnvBoolFlags(t *testing.T) {
 }
 
 func TestLoad_NoteOlderThanDuration(t *testing.T) {
-	os.Setenv("TOKEN", "test-token")
-	os.Setenv("HOST", "misskey.example.com")
+	os.Setenv("API_TOKEN", "test-token")
+	os.Setenv("INSTANCE_HOST", "misskey.example.com")
 	os.Setenv("NOTE_OLDER_THAN", "12h30m")
-	defer os.Unsetenv("TOKEN")
-	defer os.Unsetenv("HOST")
+	defer os.Unsetenv("API_TOKEN")
+	defer os.Unsetenv("INSTANCE_HOST")
 	defer os.Unsetenv("NOTE_OLDER_THAN")
 	os.Args = []string{"test"}
 
@@ -320,11 +320,11 @@ func TestLoad_NoteOlderThanDuration(t *testing.T) {
 }
 
 func TestLoad_InvalidDuration(t *testing.T) {
-	os.Setenv("TOKEN", "test-token")
-	os.Setenv("HOST", "misskey.example.com")
+	os.Setenv("API_TOKEN", "test-token")
+	os.Setenv("INSTANCE_HOST", "misskey.example.com")
 	os.Setenv("NOTE_OLDER_THAN", "xyzzy")
-	defer os.Unsetenv("TOKEN")
-	defer os.Unsetenv("HOST")
+	defer os.Unsetenv("API_TOKEN")
+	defer os.Unsetenv("INSTANCE_HOST")
 	defer os.Unsetenv("NOTE_OLDER_THAN")
 	os.Args = []string{"test"}
 
